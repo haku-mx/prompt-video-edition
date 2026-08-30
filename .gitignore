@@ -1,0 +1,31 @@
+# --- entorno ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- secretos / config local (NUNCA subir credenciales) ---
+.env
+.env.local
+.aws/
+*.pem
+
+# --- datos: videos, salidas, base SQLite, timelines (nada de esto va al repo) ---
+data/*
+!data/.gitkeep
+!data/videos/
+data/videos/*
+!data/videos/.gitkeep
+*.sqlite
+*.sqlite3
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.otio
+
+# --- sistema ---
+.DS_Store
+*.log
