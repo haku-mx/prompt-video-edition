@@ -31,3 +31,4 @@ El `<autor>` es tu nombre corto (el de `git config user.name` en minúsculas).
 | Fecha | Autor | Tema | Enlace |
 |-------|-------|------|--------|
 | 2026-08-30 | ivan | Base compartida + M1 (CLI) y M2 (navegador) | [ver](2026-08-30-ivan-base-m1-m2.md) |
+| 2026-08-30 | ivan | Integración al repo del equipo + bitácora y skill | [ver](2026-08-30-ivan-integracion-y-bitacora.md) |
