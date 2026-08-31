@@ -5,7 +5,7 @@ description: >-
   por qué) y lo guarda en sessions/ siguiendo la plantilla del equipo, además de
   actualizar el índice. Úsala cuando la persona diga "resume la sesión", "session
   summary", "handoff", "deja constancia de lo que hicimos", o invoque
-  /session-summary. Es la bitácora que Ivan y Mauro usan para entender los cambios
+  /session-summary. Es la bitácora que Ivan y Mauricio usan para entender los cambios
   del otro en el repo haku (prompt-video-edition).
 ---
 
