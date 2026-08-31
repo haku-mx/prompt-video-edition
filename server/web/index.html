@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Haku — corte por prompt</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Haku</h1>
+    <p class="tag">Escribe una frase, obtén un corte.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1 · Elige un video</h2>
+      <p class="hint" id="videos-dir"></p>
+      <div class="row">
+        <select id="video-select"></select>
+        <button id="btn-refresh" class="ghost">↻</button>
+        <button id="btn-index">Indexar</button>
+      </div>
+      <p class="status" id="index-status"></p>
+    </section>
+
+    <section class="card" id="shots-card" hidden>
+      <h2>2 · Shots del índice</h2>
+      <div class="table-wrap">
+        <table id="shots-table">
+          <thead>
+            <tr><th>shot</th><th>in → out</th><th>dur (s)</th>
+                <th>brillo</th><th>movim.</th><th>transcripción</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="prompt-card" hidden>
+      <h2>3 · Describe el corte</h2>
+      <textarea id="prompt" rows="3">Arma un resumen dinámico de máximo 20 segundos con los momentos más luminosos y con más movimiento, en orden cronológico.</textarea>
+      <div class="row">
+        <button id="btn-cut">Generar corte</button>
+        <span class="status" id="cut-status"></span>
+      </div>
+    </section>
+
+    <section class="card" id="result-card" hidden>
+      <h2>4 · Resultado</h2>
+      <p id="rationale" class="rationale"></p>
+      <video id="player" controls preload="auto"></video>
+      <ol id="clips-list" class="clips"></ol>
+      <p class="hint"><a id="otio-link" href="#" target="_blank">Descargar timeline .otio</a></p>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

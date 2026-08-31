@@ -216,3 +216,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ===== Haku (específico del proyecto) =====
+# Datos: videos, salidas, base SQLite y timelines (NUNCA al repo)
+data/*
+!data/.gitkeep
+!data/videos/
+data/videos/*
+!data/videos/.gitkeep
+*.sqlite
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+*.otio
+
+# macOS
+.DS_Store
