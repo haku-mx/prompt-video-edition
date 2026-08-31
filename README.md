@@ -3,7 +3,7 @@
 Edición de video por **prompts en lenguaje natural**. Escribes una frase y
 obtienes un primer corte utilizable — porque el video se entendió *antes*, en
 una etapa offline. Ver [PLAN.md](PLAN.md) para los hitos y el reparto, y
-[docs/mvp_plan_3_meses.md](docs/mvp_plan_3_meses.md) para la visión de 12 semanas.
+[planning/mvp_plan_3_meses.md](planning/mvp_plan_3_meses.md) para la visión de 12 semanas.
 
 Estado hoy: **M1 (CLI) + M2 (navegador)**. Local, ligero, sin torch.
 

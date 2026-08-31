@@ -4,7 +4,7 @@
 usuario escribe una frase y obtiene un **primer corte utilizable** que afina y
 exporta, *porque el video ya se entendió antes*.
 
-Este plan operativo complementa la guía de 12 semanas ([docs/mvp_plan_3_meses.md](docs/mvp_plan_3_meses.md)):
+Este plan operativo complementa la guía de 12 semanas ([planning/mvp_plan_3_meses.md](planning/mvp_plan_3_meses.md)):
 aquí está el orden concreto de construcción en hitos y el reparto entre dos personas.
 
 ## La frontera que no se cruza (crítica)
