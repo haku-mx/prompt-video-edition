@@ -84,6 +84,8 @@ def main() -> int:
               file=sys.stderr)
         return 4
 
+    if decision.get("backend") == "fake":
+        print("  [MODO PRUEBA sin IA: HAKU_DECIDE_BACKEND=fake — heurística local]")
     print(f"\nDecisión: {len(clips)} clips en orden")
     for c in clips:
         print(f"  {c['shot_id']}  {c['in_tc']} -> {c['out_tc']}   {c['reason']}")

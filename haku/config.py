@@ -39,6 +39,11 @@ BEDROCK_MODEL_ID = os.environ.get(
 BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2000"))
 BEDROCK_TEMPERATURE = float(os.environ.get("BEDROCK_TEMPERATURE", "0.2"))
 
+# Motor de decisión: "bedrock" (Claude real) o "fake" (heurística local, SIN AWS).
+# El modo "fake" permite probar el loop completo (prompt -> corte -> reproducir)
+# antes de tener credenciales. Cambia a "bedrock" cuando Bedrock esté conectado.
+DECIDE_BACKEND = os.environ.get("HAKU_DECIDE_BACKEND", "bedrock").lower()
+
 
 # --------------------------------------------------------------- transcript
 # Tamaño del modelo faster-whisper: tiny/base/small/medium. Más grande = mejor

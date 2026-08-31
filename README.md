@@ -40,6 +40,18 @@ python scripts/check_bedrock.py
 Imprime la región y el modelId, llama a Claude y espera un JSON. Si el acceso
 falla, te dice en claro la causa (credenciales / región / acceso al modelo).
 
+## Probar sin AWS (modo prueba)
+
+¿Aún no tienes credenciales de Bedrock? Puedes probar el loop completo con una
+decisión heurística local (elige los shots más luminosos y con más movimiento):
+
+```bash
+export HAKU_DECIDE_BACKEND=fake     # o ponlo en tu .env
+```
+
+Con eso, `cli.py` y la UI generan y reproducen un corte sin llamar a Claude. Cuando
+Bedrock esté conectado, vuelve a `HAKU_DECIDE_BACKEND=bedrock` para usar la IA real.
+
 ## M1 — Corte por terminal
 
 Coloca un video corto en `data/videos/` y:

@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import logging
 
-from . import bedrock_client
+from . import bedrock_client, config
 
 logger = logging.getLogger("haku.decide")
 
@@ -116,15 +116,56 @@ def validate_selection(index: dict, model_output: dict) -> dict:
     }
 
 
+def _fake_model_output(index: dict, prompt: str, max_seconds: float = 20.0) -> dict:
+    """
+    Decisión HEURÍSTICA local, sin IA ni AWS (modo prueba). Imita el shape que
+    daría Claude para que el resto del pipeline no cambie: elige los shots más
+    luminosos y con más movimiento hasta ~max_seconds y los ordena cronológicamente.
+    No entiende el prompt (eso requiere el LLM); sirve para probar el loop entero.
+    """
+    shots = index["shots"]
+    scored = sorted(
+        shots, key=lambda s: s["brightness"] * 0.5 + s["motion"] * 0.5, reverse=True
+    )
+    chosen: list[dict] = []
+    total = 0.0
+    for s in scored:
+        if total >= max_seconds:
+            break
+        chosen.append(s)
+        total += s["duration_s"]
+    if not chosen and shots:
+        chosen = [shots[0]]
+    chosen.sort(key=lambda s: s["in_frame"])
+    return {
+        "clips": [
+            {"shot_id": s["shot_id"], "reason": "shot dinámico/luminoso (heurística local)"}
+            for s in chosen
+        ],
+        "rationale": (
+            "MODO PRUEBA sin IA: selección heurística local (shots más luminosos y "
+            "con más movimiento, en orden cronológico). Conecta Bedrock para usar Claude."
+        ),
+    }
+
+
 def decide(index: dict, prompt: str) -> dict:
     """
-    Llama a Claude con el índice + el prompt y devuelve la decisión validada.
+    prompt -> decisión validada. Usa Claude en Bedrock, o una heurística local
+    si HAKU_DECIDE_BACKEND=fake (para probar sin credenciales AWS).
     """
-    compact = _compact_index(index)
-    user_text = (
-        f"{JSON_INSTRUCTIONS}\n\n"
-        f"=== INSTRUCCIÓN DEL USUARIO ===\n{prompt}\n\n"
-        f"=== ÍNDICE DE SHOTS ===\n{json.dumps(compact, ensure_ascii=False)}"
-    )
-    model_output = bedrock_client.converse_json(SYSTEM_PROMPT, user_text)
-    return validate_selection(index, model_output)
+    if config.DECIDE_BACKEND == "fake":
+        logger.info("decide: backend FAKE (sin Bedrock).")
+        model_output = _fake_model_output(index, prompt)
+    else:
+        compact = _compact_index(index)
+        user_text = (
+            f"{JSON_INSTRUCTIONS}\n\n"
+            f"=== INSTRUCCIÓN DEL USUARIO ===\n{prompt}\n\n"
+            f"=== ÍNDICE DE SHOTS ===\n{json.dumps(compact, ensure_ascii=False)}"
+        )
+        model_output = bedrock_client.converse_json(SYSTEM_PROMPT, user_text)
+
+    result = validate_selection(index, model_output)
+    result["backend"] = config.DECIDE_BACKEND
+    return result

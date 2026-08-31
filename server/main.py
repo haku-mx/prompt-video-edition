@@ -121,6 +121,7 @@ def api_cut(req: CutRequest) -> dict:
         "clips": clips,
         "rationale": decision["rationale"],
         "invalid": decision["invalid"],
+        "backend": decision.get("backend"),
         "mp4_url": f"/api/media/{req.video_id}/salida.mp4",
         "otio_url": f"/api/media/{req.video_id}/cut.otio",
     }

@@ -110,7 +110,8 @@ async function makeCut() {
     player.load();
     $("#otio-link").href = r.otio_url;
     $("#result-card").hidden = false;
-    setStatus("#cut-status", `Corte listo: ${r.clips.length} clips`
+    const modeNote = r.backend === "fake" ? " · modo prueba sin IA" : "";
+    setStatus("#cut-status", `Corte listo: ${r.clips.length} clips${modeNote}`
       + (r.invalid.length ? ` (se ignoraron ${r.invalid.length} inexistentes)` : ""));
   } catch (e) {
     setStatus("#cut-status", "Error: " + e.message);
