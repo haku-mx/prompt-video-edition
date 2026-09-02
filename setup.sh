@@ -27,6 +27,7 @@ echo "==> Actualizando pip"
 python -m pip install --upgrade pip >/dev/null
 
 echo "==> Instalando dependencias (puede tardar: compila OpenTimelineIO la 1ª vez)"
+# Incluye el SDK de Anthropic (backend "api") y boto3 (backend "bedrock").
 pip install -r requirements.txt
 
 if [ ! -f .env ]; then
@@ -46,7 +47,7 @@ cat <<'EOF'
  Listo. Para empezar:
 
    source .venv/bin/activate
-   python scripts/check_bedrock.py         # verifica Bedrock
+   python scripts/check_backend.py         # verifica el backend de .env
    # coloca un video corto en data/videos/ y:
    python cli.py data/videos/tu_video.mp4  # M1: corte por CLI
    uvicorn server.main:app --reload        # M2: UI en http://127.0.0.1:8000

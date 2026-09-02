@@ -6,12 +6,12 @@ cli.py — M1: pipeline de punta a punta desde la terminal.
 
 Hace, en orden:
   1. Índice del video   -> data/<id>/index.json
-  2. Prompt (FIJO por defecto) -> decisión de Claude en Bedrock (JSON validado)
+  2. Prompt (FIJO por defecto) -> decisión de Claude (JSON validado)
   3. Timeline OTIO      -> data/<id>/cut.otio
   4. Render con ffmpeg  -> data/<id>/salida.mp4
 
-Un solo comando, con manejo de los errores obvios (falta el video, sin acceso a
-Bedrock, decisión vacía, etc.).
+Un solo comando, con manejo de los errores obvios (falta el video, sin acceso
+al modelo, decisión vacía, etc.).
 """
 
 from __future__ import annotations
@@ -19,8 +19,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-
-from botocore.exceptions import ClientError, NoCredentialsError
 
 from haku import decide as decide_mod
 from haku import indexer, render, stage_timeline
@@ -65,15 +63,8 @@ def main() -> int:
     print(f"\nPrompt: {args.prompt}")
     try:
         decision = decide_mod.decide(index, args.prompt)
-    except (ClientError, NoCredentialsError) as e:
-        print(
-            "\n[ERROR] No se pudo llamar a Claude en Bedrock:\n"
-            f"        {e}\n"
-            "        Revisa credenciales AWS, la región (AWS_REGION) y el acceso "
-            "al modelo (BEDROCK_MODEL_ID).\n"
-            "        Diagnóstico rápido:  python scripts/check_bedrock.py",
-            file=sys.stderr,
-        )
+    except decide_mod.BackendError as e:
+        print(f"\n[ERROR] {e}", file=sys.stderr)
         return 3
 
     clips = decision["clips"]

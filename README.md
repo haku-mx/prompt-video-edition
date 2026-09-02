@@ -14,9 +14,12 @@ Estado hoy: **M1 (CLI) + M2 (navegador)**. Local, ligero, sin torch.
 - **Python 3.11+** (probado en 3.14, macOS arm64).
 - **Xcode Command Line Tools** (macOS): OpenTimelineIO se compila desde fuente.
   Instálalas una vez con `xcode-select --install`.
-- **Credenciales AWS** con **acceso a un modelo Claude en Amazon Bedrock**
-  (Model access habilitado). Las credenciales se toman de la cadena estándar de
-  AWS (`~/.aws/credentials`, rol, o variables de entorno) — **no** de una API key.
+- **Acceso a Claude**, por cualquiera de las dos vías (ver
+  [Backends de decisión](#backends-de-decisión)):
+  - una **API key de Anthropic** (`ANTHROPIC_API_KEY` en `.env`) — lo más rápido; o
+  - **credenciales AWS** con acceso a un modelo Claude en **Amazon Bedrock**
+    (Model access habilitado), tomadas de la cadena estándar de AWS
+    (`~/.aws/credentials`, rol, o variables de entorno).
 - **ffmpeg NO hace falta instalarlo**: lo aporta `imageio-ffmpeg` vía pip.
 
 ## Instalación (un comando)
@@ -28,29 +31,65 @@ cd haku
 ```
 
 Esto crea `.venv`, instala las dependencias fijadas, copia `.env.example` → `.env`
-y prepara `data/`. Luego edita `.env` y confirma tu `BEDROCK_MODEL_ID` y `AWS_REGION`.
+y prepara `data/`. Luego edita `.env` y elige tu backend (abajo).
 
-## Verificar Bedrock
+## Backends de decisión
+
+Quién elige los shots se controla con **`HAKU_DECIDE_BACKEND`** en `.env`. Los
+tres modos comparten prompt, validación y el resto del pipeline: solo cambia
+quién responde.
+
+| Valor | Quién decide | Qué necesitas |
+|-------|--------------|---------------|
+| `api` | Claude por la **API directa de Anthropic** | `ANTHROPIC_API_KEY` en `.env` |
+| `bedrock` | Claude en **Amazon Bedrock** | Credenciales AWS + Model access |
+| `fake` | Heurística local, **sin IA** | Nada |
+
+### `api` — lo más rápido para empezar
+
+```bash
+# en .env
+HAKU_DECIDE_BACKEND=api
+ANTHROPIC_API_KEY=sk-ant-...        # de https://console.anthropic.com
+ANTHROPIC_MODEL_ID=claude-sonnet-5  # opcional
+```
+
+La key **sí** va en `.env` (que está en `.gitignore` y nunca se sube). Ajusta
+`ANTHROPIC_EFFORT` (`low|medium|high|xhigh|max`, por defecto `medium`) si quieres
+más criterio de montaje o más velocidad.
+
+### `bedrock` — si el equipo ya está en AWS
+
+```bash
+# en .env
+HAKU_DECIDE_BACKEND=bedrock
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+```
+
+Las credenciales AWS **no** van en `.env`: se toman de la cadena estándar
+(`~/.aws/credentials`, rol, o variables de entorno).
+
+### `fake` — probar el loop sin nada
+
+```bash
+export HAKU_DECIDE_BACKEND=fake
+```
+
+Elige los shots más luminosos y con más movimiento. `cli.py` y la UI generan y
+reproducen un corte sin llamar a ningún modelo; útil para tocar el render o la UI
+sin gastar tokens. **No entiende el prompt** — eso requiere el LLM.
+
+## Verificar el backend
 
 ```bash
 source .venv/bin/activate
-python scripts/check_bedrock.py
+python scripts/check_backend.py                 # el backend activo
+python scripts/check_backend.py --backend api   # uno concreto
 ```
 
-Imprime la región y el modelId, llama a Claude y espera un JSON. Si el acceso
-falla, te dice en claro la causa (credenciales / región / acceso al modelo).
-
-## Probar sin AWS (modo prueba)
-
-¿Aún no tienes credenciales de Bedrock? Puedes probar el loop completo con una
-decisión heurística local (elige los shots más luminosos y con más movimiento):
-
-```bash
-export HAKU_DECIDE_BACKEND=fake     # o ponlo en tu .env
-```
-
-Con eso, `cli.py` y la UI generan y reproducen un corte sin llamar a Claude. Cuando
-Bedrock esté conectado, vuelve a `HAKU_DECIDE_BACKEND=bedrock` para usar la IA real.
+Imprime el modelo en uso, hace una llamada mínima y espera un JSON. Si falla, te
+dice en claro la causa (key, credenciales, región, acceso al modelo).
 
 ## M1 — Corte por terminal
 
@@ -84,20 +123,22 @@ pytest            # timecode reversible + validación de decisiones (sin red)
 
 ```
 haku/            motor (BATCH + la decisión interactiva)
-  config.py        configuración central (modelo, región, rutas, DB)
-  bedrock_client.py  Claude vía Bedrock (Converse API) — compartido
+  config.py        configuración central (backend, modelo, rutas, DB)
+  bedrock_client.py  Claude vía Bedrock (Converse API)
+  anthropic_client.py  Claude vía API directa (SDK oficial) — misma superficie
+  llm_json.py      parseo tolerante del JSON del modelo (compartido)
   scenes.py        shots con scenedetect + fps real
   transcript.py    faster-whisper (sin torch)
   visual_signals.py  brillo/saturación/movimiento con OpenCV
   timecode.py      frame <-> timecode frame-accurate
   indexer.py       ensambla index.json + persiste en SQLite
   db.py            SQLAlchemy (SQLite -> Postgres cambiando 1 string)
-  decide.py        prompt -> decisión (VALIDADA contra el índice)
+  decide.py        prompt -> decisión VALIDADA + despacho de backends
   stage_timeline.py  decisión -> Timeline OTIO (.otio)
   render.py        rangos -> ffmpeg -> salida.mp4
 cli.py           M1: pipeline de punta a punta
 server/          M2: FastAPI + UI web mínima (server/web/)
-scripts/         check_bedrock.py
+scripts/         check_backend.py
 data/            videos, índices, salidas, SQLite (git-ignored)
 tests/
 ```

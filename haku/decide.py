@@ -1,5 +1,5 @@
 """
-decide.py — Prompt en lenguaje natural -> decisión de corte (Claude en Bedrock).
+decide.py — Prompt en lenguaje natural -> decisión de corte (Claude).
 
 Esta es la mitad INTERACTIVA: NO toca el video ni corre visión. Solo razona
 sobre la metadata compacta del índice y devuelve qué shots usar y en qué orden.
@@ -10,7 +10,10 @@ inventado y toma SIEMPRE los in/out reales del índice (no los que "diga" el
 modelo), de modo que es imposible materializar un rango que no exista.
 
 `validate_selection` es una función pura (sin red): por eso se puede testear
-sin llamar a Bedrock.
+sin llamar a ningún modelo.
+
+Hay tres backends (HAKU_DECIDE_BACKEND): "bedrock", "api" y "fake". Los tres
+comparten prompt y validación; solo cambia quién responde.
 """
 
 from __future__ import annotations
@@ -18,7 +21,10 @@ from __future__ import annotations
 import json
 import logging
 
-from . import bedrock_client, config
+import anthropic
+from botocore.exceptions import ClientError, NoCredentialsError
+
+from . import anthropic_client, bedrock_client, config
 
 logger = logging.getLogger("haku.decide")
 
@@ -43,6 +49,16 @@ JSON_INSTRUCTIONS = (
 
 class InvalidDecision(ValueError):
     """La decisión del modelo referenció shots que no existen en el índice."""
+
+
+class BackendError(RuntimeError):
+    """
+    No se pudo obtener una decisión del backend configurado.
+
+    Envuelve el error del proveedor (botocore o anthropic) en un mensaje ya
+    redactado para el usuario, para que cli.py y server/main.py capturen UN solo
+    tipo y no tengan que conocer los detalles de cada SDK.
+    """
 
 
 def _compact_index(index: dict) -> dict:
@@ -149,23 +165,65 @@ def _fake_model_output(index: dict, prompt: str, max_seconds: float = 20.0) -> d
     }
 
 
+def _build_user_text(index: dict, prompt: str) -> str:
+    """Mensaje de usuario, IDÉNTICO para todos los backends con modelo real."""
+    compact = _compact_index(index)
+    return (
+        f"{JSON_INSTRUCTIONS}\n\n"
+        f"=== INSTRUCCIÓN DEL USUARIO ===\n{prompt}\n\n"
+        f"=== ÍNDICE DE SHOTS ===\n{json.dumps(compact, ensure_ascii=False)}"
+    )
+
+
 def decide(index: dict, prompt: str) -> dict:
     """
-    prompt -> decisión validada. Usa Claude en Bedrock, o una heurística local
-    si HAKU_DECIDE_BACKEND=fake (para probar sin credenciales AWS).
+    prompt -> decisión validada, con el backend de HAKU_DECIDE_BACKEND:
+      "bedrock" — Claude en Amazon Bedrock (credenciales AWS).
+      "api"     — Claude por la API directa de Anthropic (ANTHROPIC_API_KEY).
+      "fake"    — heurística local, sin red.
+
+    Lanza BackendError si el proveedor falla (credenciales, acceso, red).
     """
-    if config.DECIDE_BACKEND == "fake":
-        logger.info("decide: backend FAKE (sin Bedrock).")
+    backend = config.DECIDE_BACKEND
+
+    if backend == "fake":
+        logger.info("decide: backend FAKE (sin modelo).")
         model_output = _fake_model_output(index, prompt)
+
+    elif backend == "api":
+        logger.info("decide: backend API (%s).", config.ANTHROPIC_MODEL_ID)
+        try:
+            model_output = anthropic_client.converse_json(
+                SYSTEM_PROMPT, _build_user_text(index, prompt)
+            )
+        except anthropic.AnthropicError as e:
+            raise BackendError(
+                f"No se pudo llamar a Claude por la API de Anthropic: {e}\n"
+                "Revisa ANTHROPIC_API_KEY en tu .env y ANTHROPIC_MODEL_ID "
+                f"(ahora {config.ANTHROPIC_MODEL_ID}).\n"
+                "Diagnóstico rápido:  python scripts/check_backend.py"
+            ) from e
+
+    elif backend == "bedrock":
+        logger.info("decide: backend BEDROCK (%s).", config.BEDROCK_MODEL_ID)
+        try:
+            model_output = bedrock_client.converse_json(
+                SYSTEM_PROMPT, _build_user_text(index, prompt)
+            )
+        except (ClientError, NoCredentialsError) as e:
+            raise BackendError(
+                f"No se pudo llamar a Claude en Bedrock: {e}\n"
+                "Revisa credenciales AWS, la región (AWS_REGION) y el acceso al "
+                f"modelo (BEDROCK_MODEL_ID, ahora {config.BEDROCK_MODEL_ID}).\n"
+                "Diagnóstico rápido:  python scripts/check_backend.py"
+            ) from e
+
     else:
-        compact = _compact_index(index)
-        user_text = (
-            f"{JSON_INSTRUCTIONS}\n\n"
-            f"=== INSTRUCCIÓN DEL USUARIO ===\n{prompt}\n\n"
-            f"=== ÍNDICE DE SHOTS ===\n{json.dumps(compact, ensure_ascii=False)}"
+        raise ValueError(
+            f"HAKU_DECIDE_BACKEND={backend!r} no es válido. "
+            f"Opciones: {', '.join(config.VALID_BACKENDS)}."
         )
-        model_output = bedrock_client.converse_json(SYSTEM_PROMPT, user_text)
 
     result = validate_selection(index, model_output)
-    result["backend"] = config.DECIDE_BACKEND
+    result["backend"] = backend
     return result
