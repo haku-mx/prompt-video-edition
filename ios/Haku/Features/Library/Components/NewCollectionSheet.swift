@@ -11,6 +11,8 @@ import SwiftUI
 struct NewCollectionSheet: View {
     /// Videos que sembrarán la colección (puede venir vacío desde el "+").
     var selection: [Video] = []
+    /// Se llama al confirmar (nombre, videos, etiquetas de enriquecimiento).
+    var onCreate: (String, [Video], Set<String>) -> Void = { _, _, _ in }
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String = ""
@@ -46,9 +48,12 @@ struct NewCollectionSheet: View {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Crear") { dismiss() }
-                        .fontWeight(.semibold)
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty && selection.isEmpty)
+                    Button("Crear") {
+                        onCreate(name, selection, chosen)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty && selection.isEmpty)
                 }
             }
         }

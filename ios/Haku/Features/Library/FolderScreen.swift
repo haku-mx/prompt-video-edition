@@ -19,6 +19,8 @@ struct FolderScreen: View {
     /// Nota del recuerdo (si esta carpeta es un recuerdo con texto).
     var memoryNote: String? = nil
     var memorySeed: String? = nil
+    /// Crea una colección (se propaga a subcarpetas y a "Nueva colección").
+    var onCreateCollection: (String, [Video], Set<String>) -> Void = { _, _, _ in }
 
     private var isRoot: Bool { staticMedia == nil }
 
@@ -29,6 +31,7 @@ struct FolderScreen: View {
     @State private var uploadPresented = false
     @State private var newCollectionPresented = false
     @State private var note: NotePayload?
+    @State private var detailVideo: VideoDetailPayload?
 
     var body: some View {
         ScrollView {
@@ -45,7 +48,6 @@ struct FolderScreen: View {
         .background(HakuColor.background)
         .scrollContentBackground(.hidden)
         .gesture(zoomPinch)
-        .simultaneousGesture(zoomSwipe)
         .overlay(alignment: .top) { zoomIndicator }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(isRoot ? .large : .inline)
@@ -53,8 +55,11 @@ struct FolderScreen: View {
             ToolbarItem(placement: .topBarTrailing) { addMenu }
         }
         .sheet(isPresented: $uploadPresented) { UploadSheet() }
-        .sheet(isPresented: $newCollectionPresented) { NewCollectionSheet() }
+        .sheet(isPresented: $newCollectionPresented) {
+            NewCollectionSheet(onCreate: onCreateCollection)
+        }
         .sheet(item: $note) { NoteSheet(payload: $0) }
+        .sheet(item: $detailVideo) { VideoDetailSheet(payload: $0) }
         .task {
             if isRoot { await model.load() }
         }
@@ -104,7 +109,8 @@ struct FolderScreen: View {
                                      folders: folder.subfolders,
                                      staticMedia: folder.media,
                                      memoryNote: folder.noteText,
-                                     memorySeed: folder.coverSeeds.first)
+                                     memorySeed: folder.coverSeeds.first,
+                                     onCreateCollection: onCreateCollection)
                     } label: {
                         FolderCard(folder: folder)
                     }
@@ -141,6 +147,13 @@ struct FolderScreen: View {
         }
     }
 
+    /// URL reproducible para videos reales del backend (raíz + indexado); los
+    /// clips mock no tienen backend, así que devuelven `nil` (placeholder).
+    private func playbackURL(for video: Video) -> URL? {
+        guard isRoot, video.indexed else { return nil }
+        return HakuAPI.localhost.baseURL.appendingPathComponent("api/media/\(video.videoID)/salida.mp4")
+    }
+
     private func mediaGrid(_ videos: [Video]) -> some View {
         let sections = GalleryGrouping.sections(videos, mode: zoom)
         let columns = Array(
@@ -154,10 +167,9 @@ struct FolderScreen: View {
                     LazyVGrid(columns: columns, spacing: HakuSpacing.lg) {
                         ForEach(section.videos) { video in
                             Button {
-                                note = NotePayload(
-                                    title: video.filename,
-                                    imageSeed: video.videoID,
-                                    text: "Nota de \(video.filename). Escribe aquí lo que quieras recordar de este clip."
+                                detailVideo = VideoDetailPayload(
+                                    video: video,
+                                    playbackURL: playbackURL(for: video)
                                 )
                             } label: {
                                 VideoTile(video: video, aspect: zoom.tileAspect)
@@ -252,16 +264,6 @@ struct FolderScreen: View {
             .onEnded { value in
                 if value.magnification > 1.15 { zoomIn() }
                 else if value.magnification < 0.85 { zoomOut() }
-            }
-    }
-
-    private var zoomSwipe: some Gesture {
-        DragGesture(minimumDistance: 30)
-            .onEnded { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-                guard abs(dx) > 60, abs(dx) > 2 * abs(dy) else { return }
-                if dx < 0 { zoomIn() } else { zoomOut() }
             }
     }
 

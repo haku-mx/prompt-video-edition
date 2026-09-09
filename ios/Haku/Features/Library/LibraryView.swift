@@ -2,9 +2,11 @@
 //  LibraryView.swift
 //  Pantalla inicial (iOS-M1): la Biblioteca de Haku.
 //
-//  Ventana única de carpetas (`FolderScreen`) + una pestaña de Calendario, con
-//  chrome flotante Liquid Glass abajo (botonera Biblioteca/Calendario + Buscar)
-//  que persiste sobre la navegación. Tema blanco (haku).
+//  Dos pestañas —Biblioteca (explorador de colecciones) y Calendario— navegables
+//  por la botonera flotante o con un swipe horizontal (TabView paginado). La
+//  chrome flotante (botonera + Buscar) se superpone y persiste. Las colecciones
+//  que se crean aparecen en la lista durante la sesión (LibraryStore).
+//  Tema blanco (haku).
 //
 
 import SwiftUI
@@ -12,28 +14,30 @@ import SwiftUI
 struct LibraryView: View {
     @State private var tab: AppTab = .library
     @State private var searchPresented = false
+    @StateObject private var store = LibraryStore()
 
     var body: some View {
         ZStack {
             HakuColor.background.ignoresSafeArea()
 
-            Group {
-                switch tab {
-                case .library:
-                    NavigationStack {
-                        FolderScreen(
-                            title: "Biblioteca",
-                            folders: MockLibrary.rootFolders,
-                            staticMedia: nil
-                        )
-                    }
-                case .calendar:
-                    NavigationStack { CalendarView() }
+            TabView(selection: $tab) {
+                NavigationStack {
+                    FolderScreen(
+                        title: "Biblioteca",
+                        folders: store.userCollections + MockLibrary.rootFolders,
+                        staticMedia: nil,
+                        onCreateCollection: create
+                    )
                 }
+                .tag(AppTab.library)
+
+                NavigationStack { CalendarView() }
+                    .tag(AppTab.calendar)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             .tint(HakuColor.textPrimary)
 
-            // Chrome inferior flotante, persistente sobre la navegación.
+            // Chrome inferior flotante, persistente sobre las pestañas.
             VStack {
                 Spacer()
                 FloatingBottomBar(tab: $tab) { searchPresented = true }
@@ -41,7 +45,15 @@ struct LibraryView: View {
             }
         }
         .preferredColorScheme(.light)
-        .sheet(isPresented: $searchPresented) { SearchSheet() }
+        .sheet(isPresented: $searchPresented) {
+            SearchSheet(onCreateCollection: create)
+        }
+    }
+
+    /// Crea la colección en el store y lleva a la pestaña Biblioteca para verla.
+    private func create(_ name: String, _ videos: [Video], _ labels: Set<String>) {
+        store.addCollection(name: name, videos: videos, enrichmentLabels: labels)
+        withAnimation(.snappy(duration: 0.3)) { tab = .library }
     }
 }
 

@@ -41,7 +41,7 @@ struct LibraryFolder: Identifiable, Hashable {
 
     /// Texto de la nota del recuerdo, si lo tiene (enriquecimiento `.text`).
     var noteText: String? {
-        for e in enrichments { if case .text(let t) = e { return t } }
+        for e in enrichments { if case .text(let t) = e { return t.isEmpty ? nil : t } }
         return nil
     }
 

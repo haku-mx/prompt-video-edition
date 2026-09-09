@@ -10,7 +10,7 @@ import SwiftUI
 struct CalendarView: View {
     private let media = MockLibrary.allMedia
     @State private var monthAnchor: Date
-    @State private var note: NotePayload?
+    @State private var detailVideo: VideoDetailPayload?
 
     private static var cal: Calendar {
         var c = Calendar(identifier: .gregorian)
@@ -50,7 +50,7 @@ struct CalendarView: View {
         .scrollContentBackground(.hidden)
         .navigationTitle("Calendario")
         .navigationBarTitleDisplayMode(.large)
-        .sheet(item: $note) { NoteSheet(payload: $0) }
+        .sheet(item: $detailVideo) { VideoDetailSheet(payload: $0) }
     }
 
     // MARK: - Encabezado de mes
@@ -108,8 +108,7 @@ struct CalendarView: View {
         return Group {
             if let first = videos.first {
                 Button {
-                    note = NotePayload(title: first.filename, imageSeed: first.videoID,
-                                       text: "Nota de \(first.filename). Escribe aquí el recuerdo de este día.")
+                    detailVideo = VideoDetailPayload(video: first, playbackURL: nil)
                 } label: {
                     PlaceholderThumbnail(seed: first.videoID)
                         .aspectRatio(1, contentMode: .fill)
