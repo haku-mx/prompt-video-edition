@@ -56,6 +56,52 @@ la IA; export final pulido; prueba con un usuario real que reporte el "aha".
 
 ---
 
+## Track iOS — la interfaz nativa (nuevo)
+
+A partir de aquí, la **experiencia principal de Haku es una app iOS nativa
+(SwiftUI)**. No reemplaza al motor ni a la frontera batch/interactivo: la app es
+un cliente delgado que consume el **mismo contrato de API** que ya expone el
+servidor FastAPI (M2). La app nunca corre visión ni toca video — solo habla con
+`server/` por HTTP. La frontera sagrada se mantiene.
+
+**Contrato que consume la app** (ya existente en `server/main.py`):
+
+| Endpoint | Uso en la app |
+|---|---|
+| `GET /api/videos` | Biblioteca: listar videos locales + estado `indexed` |
+| `POST /api/index` | Indexar un video (dispara el batch en el servidor) |
+| `GET /api/index/{video_id}` | Detalle: ver shots (timecodes, transcript) |
+| `POST /api/cut` | Prompt → decisión → timeline → MP4 |
+| `GET /api/media/{video_id}/salida.mp4` | Reproducir el corte (AVPlayer) |
+
+Durante el desarrollo la app apunta al servidor local (`http://127.0.0.1:8000`);
+el simulador comparte la red del Mac, así que se conecta a `localhost` directo
+(el `Info.plist` habilita ATS para red local). La URL base es configurable para
+apuntar luego a un backend remoto sin tocar código.
+
+### Hitos iOS
+
+- **iOS-M1 — Scaffold + Biblioteca / Home** ⬅️ *empezamos aquí*
+  Proyecto Xcode SwiftUI (`ios/Haku`), capa de red (`HakuAPI`), y la primera
+  pantalla: lista de videos desde `GET /api/videos` con estado indexado,
+  loading / error / vacío y pull-to-refresh.
+  - Entregable: la app arranca en el simulador y muestra la biblioteca real del backend.
+- **iOS-M2 — Detalle de video + indexar**
+  Tocar un video abre su detalle; si no está indexado, botón **Indexar**
+  (`POST /api/index`); si lo está, ver sus shots (`GET /api/index/{id}`).
+- **iOS-M3 — Prompt → corte → preview**
+  Campo de prompt, **Generar corte** (`POST /api/cut`) y reproducción del MP4
+  con `AVPlayer`. El corazón del producto, ahora nativo.
+- **iOS-M4 — Refinamiento + afinado manual**
+  Alineado con M4/M5 del backend: refinamiento conversacional y ajuste manual
+  de in/out sobre el mismo OTIO.
+- **iOS-M5 — Export / compartir**
+  Exportar y compartir el MP4 final desde la app.
+
+Detalles de arquitectura de la app en [ios/README.md](ios/README.md).
+
+---
+
 ## Reparto (dos personas, ramas + PRs)
 
 **Tu amigo — backend / plataforma**
@@ -82,5 +128,9 @@ interfaz entre las dos mitades. Cambios a ese contrato se acuerdan en un PR.
 empuja directo a `main`.
 
 ## Fuera de alcance (diferido, a propósito)
-S3, Modal, vector store, proxies, app nativa, multiusuario, torch/visión pesada.
-Todo local hasta M3. Lo diferido se queda diferido.
+S3, Modal, vector store, proxies, multiusuario, torch/visión pesada, publicación
+en App Store. Todo local hasta M3. Lo diferido se queda diferido.
+
+> Nota: la **app nativa iOS** ya **no** está diferida — es el nuevo track de
+> interfaz (ver "Track iOS" arriba). Lo que sigue diferido es distribuirla y el
+> backend remoto; durante el desarrollo corre contra el servidor local.
