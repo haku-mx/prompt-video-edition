@@ -13,7 +13,8 @@ struct CollectionDetailScreen: View {
     @State private var note: NotePayload?
 
     var body: some View {
-        MediaTimeframeView(media: folder.media, playbackURL: { _ in nil }) {
+        MediaTimeframeView(media: folder.media, playbackURL: { _ in nil },
+                           onCreateCollection: onCreateCollection) {
             VStack(alignment: .leading, spacing: HakuSpacing.lg) {
                 if let text = folder.noteText { noteCard(text) }
                 if !folder.subfolders.isEmpty { subcollections }

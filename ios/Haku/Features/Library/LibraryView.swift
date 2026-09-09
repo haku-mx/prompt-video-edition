@@ -21,8 +21,9 @@ struct LibraryView: View {
             TabView(selection: $tab) {
                 LibraryScreen(
                     segment: librarySegment,
-                    collections: store.userCollections + MockLibrary.rootFolders,
-                    onCreateCollection: create
+                    collections: store.collections,
+                    onCreateCollection: create,
+                    onAddToCollection: { folder, videos in store.addVideos(to: folder, videos: videos) }
                 )
                 .tag(AppTab.library)
 

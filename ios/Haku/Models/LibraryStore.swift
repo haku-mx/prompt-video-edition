@@ -1,18 +1,18 @@
 //
 //  LibraryStore.swift
-//  Estado de sesión de la biblioteca: guarda las colecciones que el usuario crea
-//  para que aparezcan en la lista durante la sesión. iOS-M1: persistencia ligera
-//  en memoria (no sobrevive a reinicios; sin SwiftData todavía).
+//  Estado de sesión de la biblioteca: es la fuente de verdad de las colecciones
+//  (parte de las de ejemplo y se le pueden crear nuevas o añadir videos).
+//  iOS-M1: persistencia ligera en memoria (no sobrevive a reinicios).
 //
 
 import SwiftUI
 
 @MainActor
 final class LibraryStore: ObservableObject {
-    /// Colecciones creadas por el usuario (se muestran antes de las de ejemplo).
-    @Published var userCollections: [LibraryFolder] = []
+    /// Todas las colecciones visibles (ejemplo + creadas por el usuario).
+    @Published var collections: [LibraryFolder] = MockLibrary.rootFolders
 
-    /// Crea una colección desde el flujo de "Nueva colección" / "Crear colección".
+    /// Crea una colección desde "Nueva colección" / "Crear colección".
     func addCollection(name: String, videos: [Video], enrichmentLabels: Set<String>) {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let folder = LibraryFolder(
@@ -21,10 +21,16 @@ final class LibraryStore: ObservableObject {
             subfolders: [],
             media: videos
         )
-        userCollections.insert(folder, at: 0)
+        collections.insert(folder, at: 0)
     }
 
-    /// Mapea las etiquetas elegidas en la UI a enriquecimientos (valores mock).
+    /// Añade videos a una colección existente (sin duplicar).
+    func addVideos(to folder: LibraryFolder, videos: [Video]) {
+        guard let i = collections.firstIndex(where: { $0.id == folder.id }) else { return }
+        let existing = Set(collections[i].media.map(\.id))
+        collections[i].media.append(contentsOf: videos.filter { !existing.contains($0.id) })
+    }
+
     private static func enrichments(from labels: Set<String>) -> [Enrichment] {
         var out: [Enrichment] = []
         if labels.contains("Música") { out.append(.music(title: "Por definir", artist: "")) }

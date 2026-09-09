@@ -18,6 +18,7 @@ struct LibraryScreen: View {
     let segment: LibrarySegment
     let collections: [LibraryFolder]
     var onCreateCollection: (String, [Video], Set<String>) -> Void = { _, _, _ in }
+    var onAddToCollection: (LibraryFolder, [Video]) -> Void = { _, _ in }
 
     @State private var path = NavigationPath()
     @State private var newCollectionPresented = false
@@ -111,7 +112,11 @@ struct LibraryScreen: View {
         case .loaded(_, let videos, _):
             let all = videos + MockLibrary.allMedia
             MediaTimeframeView(media: all,
-                               playbackURL: { playbackURL(for: $0, realIDs: Set(videos.map(\.id))) })
+                               playbackURL: { playbackURL(for: $0, realIDs: Set(videos.map(\.id))) },
+                               showsTagFilter: true,
+                               collections: collections,
+                               onCreateCollection: onCreateCollection,
+                               onAddToCollection: onAddToCollection)
         case .failed(let message):
             ContentUnavailableView {
                 Label("No se pudo cargar", systemImage: "wifi.exclamationmark")

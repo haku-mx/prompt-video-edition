@@ -13,6 +13,9 @@ struct VideoTile: View {
     var showsFilename: Bool = true
     /// Modo "las imágenes hablan": solo miniatura + duración (sin play/estado).
     var minimalOverlays: Bool = false
+    /// Aplica el feedback de presión propio (desactívalo si el contenedor ya
+    /// maneja gestos como long-press de selección).
+    var pressable: Bool = true
 
     private var cornerRadius: CGFloat { minimalOverlays ? HakuRadius.sm : HakuRadius.lg }
 
@@ -73,7 +76,15 @@ struct VideoTile: View {
                     .truncationMode(.middle)
             }
         }
-        .pressable()
+        .modifier(OptionalPressable(enabled: pressable))
+    }
+}
+
+/// Aplica `.pressable()` solo si está habilitado.
+private struct OptionalPressable: ViewModifier {
+    let enabled: Bool
+    func body(content: Content) -> some View {
+        if enabled { content.pressable() } else { content }
     }
 }
 
