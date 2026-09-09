@@ -2,7 +2,7 @@
 //  FloatingChrome.swift
 //  Chrome flotante con Liquid Glass (iOS 26): una botonera cápsula + búsqueda.
 //  La botonera es dinámica: al activar "Biblioteca" se EXPANDE para mostrar sus
-//  subapartados (Colecciones / Videos) dentro del mismo vidrio; así la pantalla
+//  subapartados (Colecciones / Media) dentro del mismo vidrio; así la pantalla
 //  queda libre para el contenido. "Create" (isotipo "k") está siempre presente.
 //
 
@@ -18,6 +18,12 @@ struct FloatingBottomBar: View {
     @Binding var tab: AppTab
     @Binding var librarySegment: LibrarySegment
     var onSearch: () -> Void = {}
+
+    /// El texto de las pastillas se muestra un par de segundos y luego se
+    /// esconde para dejar solo los íconos. Se vuelve a mostrar al cambiar de
+    /// apartado o pestaña (para reintroducir el nombre del destino).
+    @State private var labelsVisible = true
+    @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
         GlassEffectContainer(spacing: 18) {
@@ -43,6 +49,21 @@ struct FloatingBottomBar: View {
             .padding(.horizontal, HakuSpacing.lg)
             .animation(.snappy(duration: 0.3), value: tab)
         }
+        .onAppear { flashLabels() }
+        .onChange(of: tab) { _, _ in flashLabels() }
+        .onChange(of: librarySegment) { _, _ in flashLabels() }
+    }
+
+    /// Muestra los textos y programa su ocultamiento tras ~2 s.
+    private func flashLabels() {
+        withAnimation(.snappy(duration: 0.28)) { labelsVisible = true }
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            if !Task.isCancelled {
+                withAnimation(.snappy(duration: 0.32)) { labelsVisible = false }
+            }
+        }
     }
 
     private var cluster: some View {
@@ -51,8 +72,8 @@ struct FloatingBottomBar: View {
                 // Subapartados desplegados de Biblioteca.
                 pill(label: "Colecciones", icon: "square.stack.3d.up.fill",
                      active: librarySegment == .collections) { librarySegment = .collections }
-                pill(label: "Videos", icon: "play.rectangle.fill",
-                     active: librarySegment == .videos) { librarySegment = .videos }
+                pill(label: "Media", icon: "photo.stack.fill",
+                     active: librarySegment == .media) { librarySegment = .media }
             } else {
                 // Colapsado: botón para volver a Biblioteca.
                 pill(label: "Biblioteca", icon: "square.grid.2x2.fill", active: false) {
@@ -63,10 +84,12 @@ struct FloatingBottomBar: View {
         }
     }
 
-    /// Pill con énfasis en el ícono: la etiqueta aparece SOLO cuando está activo.
+    /// Pill con énfasis en el ícono: la etiqueta aparece cuando está activo y
+    /// solo durante el par de segundos iniciales (o al cambiar de destino).
     private func pill(label: String, icon: String? = nil, mark: Bool = false,
                       active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let showLabel = active && labelsVisible
+        return Button(action: action) {
             HStack(spacing: 6) {
                 if mark {
                     // Más grande que un ícono SF porque el PNG trae márgenes:
@@ -77,15 +100,16 @@ struct FloatingBottomBar: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(active ? HakuColor.textPrimary : HakuColor.textSecondary)
                 }
-                if active {
+                if showLabel {
                     Text(label)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(HakuColor.textPrimary)
                         .fixedSize()
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
             }
             .frame(height: 46)
-            .padding(.horizontal, active ? 15 : 13)
+            .padding(.horizontal, showLabel ? 15 : 13)
             .background {
                 if active {
                     Capsule().fill(HakuColor.surface)
@@ -96,6 +120,7 @@ struct FloatingBottomBar: View {
         }
         .buttonStyle(.plain)
         .animation(.snappy(duration: 0.28), value: active)
+        .animation(.snappy(duration: 0.28), value: labelsVisible)
     }
 }
 

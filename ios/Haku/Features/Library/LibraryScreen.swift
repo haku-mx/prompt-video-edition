@@ -1,17 +1,18 @@
 //
 //  LibraryScreen.swift
-//  "Biblioteca": muestra el apartado activo (Colecciones o Videos) a pantalla
+//  "Biblioteca": muestra el apartado activo (Colecciones o Media) a pantalla
 //  completa. El cambio de apartado NO vive aquí: se controla desde la botonera
 //  de Liquid Glass (ver FloatingBottomBar), así la pantalla queda libre para el
-//  contenido. Colecciones = tablero Pinterest; Videos = navegador estilo Fotos.
+//  contenido. Colecciones = tablero Pinterest; Media = navegador estilo Fotos
+//  (fotos y videos).
 //
 
 import SwiftUI
 
 enum LibrarySegment: String, CaseIterable, Identifiable {
-    case collections, videos
+    case collections, media
     var id: String { rawValue }
-    var label: String { self == .collections ? "Colecciones" : "Videos" }
+    var label: String { self == .collections ? "Colecciones" : "Media" }
 }
 
 struct LibraryScreen: View {
@@ -73,7 +74,7 @@ struct LibraryScreen: View {
     private var content: some View {
         switch segment {
         case .collections: collectionsBoard
-        case .videos:      videosView
+        case .media:       mediaView
         }
     }
 
@@ -100,10 +101,10 @@ struct LibraryScreen: View {
         return steps[seed % steps.count]
     }
 
-    // MARK: - Videos (estilo Fotos)
+    // MARK: - Media (estilo Fotos: fotos y videos)
 
     @ViewBuilder
-    private var videosView: some View {
+    private var mediaView: some View {
         switch photos.state {
         case .idle, .loading:
             ScrollView { SkeletonGallery().padding(.top, HakuSpacing.sm) }
