@@ -58,15 +58,45 @@ def home() -> str:
 
 @app.get("/api/videos")
 def api_videos() -> dict:
-    """Lista los videos locales disponibles en la carpeta configurada."""
+    """Lista los videos locales disponibles en la carpeta configurada.
+
+    Cada entrada trae, además del contrato base (`video_id`, `filename`,
+    `indexed`), metadata barata que la app usa para agrupar la galería:
+      - `modified_at`: mtime del archivo (epoch, segundos).
+      - `duration_s` / `shot_count`: leídos del índice si el video ya está
+        indexado (None si no). Solo LEE el índice; no reprocesa video → la
+        frontera batch/interactivo se mantiene.
+    """
     config.ensure_dirs()
     indexed = {v["id"] for v in _safe_list_indexed()}
     videos = []
     for p in sorted(config.VIDEOS_DIR.iterdir()):
         if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
             vid = indexer.video_id_for(str(p))
+            is_indexed = vid in indexed
+
+            duration_s = None
+            shot_count = None
+            if is_indexed:
+                index = indexer.load_index(vid)
+                if index is not None:
+                    duration_s = index.get("video", {}).get("duration_s")
+                    shot_count = len(index.get("shots", []))
+
+            try:
+                modified_at = p.stat().st_mtime
+            except OSError:
+                modified_at = None
+
             videos.append(
-                {"video_id": vid, "filename": p.name, "indexed": vid in indexed}
+                {
+                    "video_id": vid,
+                    "filename": p.name,
+                    "indexed": is_indexed,
+                    "modified_at": modified_at,
+                    "duration_s": duration_s,
+                    "shot_count": shot_count,
+                }
             )
     return {"videos_dir": str(config.VIDEOS_DIR), "videos": videos}
 
