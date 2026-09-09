@@ -25,8 +25,6 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from botocore.exceptions import ClientError, NoCredentialsError
-
 from haku import config, decide as decide_mod, indexer, render, stage_timeline
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -98,13 +96,8 @@ def api_cut(req: CutRequest) -> dict:
 
     try:
         decision = decide_mod.decide(index, req.prompt)
-    except (ClientError, NoCredentialsError) as e:
-        raise HTTPException(
-            502,
-            "No se pudo llamar a Claude en Bedrock: "
-            f"{e}. Revisa credenciales/región/BEDROCK_MODEL_ID "
-            "(prueba: python scripts/check_bedrock.py).",
-        )
+    except decide_mod.BackendError as e:
+        raise HTTPException(502, str(e))
 
     clips = decision["clips"]
     if not clips:

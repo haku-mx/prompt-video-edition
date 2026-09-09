@@ -7,14 +7,14 @@ Extrae y generaliza el patrón que ya funcionaba en stage_global_bedrock.py:
   - Auth = cadena estándar de AWS (boto3), NO ANTHROPIC_API_KEY.
   - Reintentos adaptativos ante throttling + parseo de JSON tolerante.
 
-TODA llamada a Claude en Haku pasa por aquí. La etapa GLOBAL previa
+Toda llamada a Claude EN BEDROCK pasa por aquí (para la API directa de Anthropic
+está anthropic_client.py, con la misma superficie). La etapa GLOBAL previa
 (stage_global_bedrock.py) se mantiene tal cual como referencia; los módulos
-nuevos (decide.py, check_bedrock.py) usan este cliente.
+nuevos (decide.py, check_backend.py) usan este cliente.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from typing import Optional
@@ -24,6 +24,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from . import config
+from .llm_json import parse_json_response  # noqa: F401  (se re-exporta)
 
 logger = logging.getLogger("haku.bedrock")
 
@@ -43,19 +44,6 @@ def get_client():
             config=Config(retries={"max_attempts": 3, "mode": "adaptive"}),
         )
     return _client
-
-
-def parse_json_response(text: str) -> dict:
-    """Extrae el JSON de la respuesta, tolerando backticks o prosa envolvente."""
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.split("```")[1]
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if start != -1 and end != -1:
-        cleaned = cleaned[start : end + 1]
-    return json.loads(cleaned)
 
 
 def converse(

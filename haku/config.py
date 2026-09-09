@@ -6,8 +6,11 @@ aquí y se lee de variables de entorno (.env). Un solo lugar para cambiar cosas,
 para que tú y tu amigo tengáis exactamente el mismo comportamiento.
 
 Regla de oro del proyecto: el modelId de Claude NUNCA se hardcodea; se toma de
-BEDROCK_MODEL_ID. La autenticación es la cadena estándar de AWS (variables de
-entorno o ~/.aws), NO una ANTHROPIC_API_KEY.
+BEDROCK_MODEL_ID (Bedrock) o ANTHROPIC_MODEL_ID (API directa).
+
+La autenticación depende del backend: Bedrock usa la cadena estándar de AWS
+(variables de entorno o ~/.aws) y sus credenciales NO van en .env; la API directa
+usa ANTHROPIC_API_KEY, que SÍ va en .env (que está en .gitignore).
 """
 
 from __future__ import annotations
@@ -39,10 +42,35 @@ BEDROCK_MODEL_ID = os.environ.get(
 BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2000"))
 BEDROCK_TEMPERATURE = float(os.environ.get("BEDROCK_TEMPERATURE", "0.2"))
 
-# Motor de decisión: "bedrock" (Claude real) o "fake" (heurística local, SIN AWS).
+# ------------------------------------------------------- backend de decisión
+# Quién decide el corte:
+#   "bedrock" — Claude en Amazon Bedrock (credenciales AWS).
+#   "api"     — Claude por la API directa de Anthropic (ANTHROPIC_API_KEY).
+#   "fake"    — heurística local, SIN red ni credenciales (modo prueba).
 # El modo "fake" permite probar el loop completo (prompt -> corte -> reproducir)
-# antes de tener credenciales. Cambia a "bedrock" cuando Bedrock esté conectado.
-DECIDE_BACKEND = os.environ.get("HAKU_DECIDE_BACKEND", "bedrock").lower()
+# antes de tener acceso a ningún modelo.
+VALID_BACKENDS = ("bedrock", "api", "fake")
+DECIDE_BACKEND = os.environ.get("HAKU_DECIDE_BACKEND", "bedrock").strip().lower()
+
+
+# --------------------------------------------------- Anthropic (API directa)
+# La key SÍ vive en .env (a diferencia de las de AWS). load_dotenv la exporta a
+# os.environ, así que el constructor sin argumentos del SDK la encuentra solo.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+
+ANTHROPIC_MODEL_ID = os.environ.get("ANTHROPIC_MODEL_ID", "claude-sonnet-5")
+
+# Más alto que BEDROCK_MAX_TOKENS a propósito: con thinking adaptativo los tokens
+# de razonamiento cuentan contra max_tokens, y un techo bajo corta la respuesta
+# antes de que llegue a escribir el JSON.
+ANTHROPIC_MAX_TOKENS = int(os.environ.get("ANTHROPIC_MAX_TOKENS", "8000"))
+
+# Profundidad de razonamiento: low | medium | high | xhigh | max.
+# NO hay temperatura aquí: temperature/top_p están eliminados en los modelos
+# actuales (devuelven 400). El equivalente para regular el gasto es "effort".
+# "medium" por defecto: elegir shots sobre un índice compacto es ranking, no
+# necesita "high", y el presupuesto de latencia de M4 lo agradece.
+ANTHROPIC_EFFORT = os.environ.get("ANTHROPIC_EFFORT", "medium").strip().lower()
 
 
 # --------------------------------------------------------------- transcript
