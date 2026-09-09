@@ -9,6 +9,12 @@ struct VideoTile: View {
     let video: Video
     /// Relación de aspecto ancho:alto de la portada (1 = cuadrada).
     var aspect: CGFloat = 1
+    /// Muestra el nombre del archivo debajo de la portada.
+    var showsFilename: Bool = true
+    /// Modo "las imágenes hablan": solo miniatura + duración (sin play/estado).
+    var minimalOverlays: Bool = false
+
+    private var cornerRadius: CGFloat { minimalOverlays ? HakuRadius.sm : HakuRadius.lg }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HakuSpacing.sm) {
@@ -16,7 +22,6 @@ struct VideoTile: View {
                 .aspectRatio(aspect, contentMode: .fill)
                 .frame(maxWidth: .infinity)
                 .overlay {
-                    // Scrim inferior para que las insignias siempre se lean.
                     LinearGradient(
                         colors: [.clear, .black.opacity(0.35)],
                         startPoint: .center,
@@ -24,27 +29,28 @@ struct VideoTile: View {
                     )
                 }
                 .overlay(alignment: .bottomLeading) {
-                    PlayBadge(size: 30).padding(HakuSpacing.sm)
+                    if !minimalOverlays {
+                        PlayBadge(size: 30).padding(HakuSpacing.sm)
+                    }
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if let duration = video.durationLabel {
                         Text(duration)
-                            .font(HakuFont.caption)
+                            .font(.system(size: minimalOverlays ? 10 : 12, weight: .semibold))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, minimalOverlays ? 5 : 7)
+                            .padding(.vertical, minimalOverlays ? 2 : 3)
                             .background(.black.opacity(0.5), in: Capsule())
-                            .padding(HakuSpacing.sm)
+                            .padding(minimalOverlays ? 4 : HakuSpacing.sm)
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    if !video.indexed {
-                        StatusPill(text: "Sin indexar")
-                            .padding(HakuSpacing.sm)
+                    if !minimalOverlays, !video.indexed {
+                        StatusPill(text: "Sin indexar").padding(HakuSpacing.sm)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if video.indexed {
+                    if !minimalOverlays, video.indexed {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(HakuColor.ready)
@@ -53,17 +59,19 @@ struct VideoTile: View {
                             .padding(HakuSpacing.sm)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(HakuColor.hairline, lineWidth: 1)
                 )
 
-            Text(video.filename)
-                .font(HakuFont.body)
-                .foregroundStyle(HakuColor.textPrimary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            if showsFilename {
+                Text(video.filename)
+                    .font(HakuFont.body)
+                    .foregroundStyle(HakuColor.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
         }
         .pressable()
     }

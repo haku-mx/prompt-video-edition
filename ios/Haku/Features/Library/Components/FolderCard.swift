@@ -9,10 +9,12 @@ import SwiftUI
 
 struct FolderCard: View {
     let folder: LibraryFolder
+    /// Altura de la portada (variada para el masonry tipo Pinterest).
+    var coverHeight: CGFloat = 150
 
     var body: some View {
         MosaicCover(seeds: folder.coverSeeds)
-            .frame(height: 150)
+            .frame(height: coverHeight)
             .overlay {
                 LinearGradient(
                     colors: [.black.opacity(0.15), .clear, .black.opacity(0.55)],
@@ -103,6 +105,30 @@ struct MosaicCover: View {
         PlaceholderThumbnail(seed: seed)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
+    }
+}
+
+/// Masonry sencillo: reparte los ítems en N columnas por orden (round-robin).
+struct MasonryColumns<Item: Identifiable, Content: View>: View {
+    let items: [Item]
+    let columns: Int
+    let spacing: CGFloat
+    @ViewBuilder let content: (Item) -> Content
+
+    var body: some View {
+        HStack(alignment: .top, spacing: spacing) {
+            ForEach(0..<columns, id: \.self) { column in
+                LazyVStack(spacing: spacing) {
+                    ForEach(itemsFor(column: column)) { item in
+                        content(item)
+                    }
+                }
+            }
+        }
+    }
+
+    private func itemsFor(column: Int) -> [Item] {
+        items.enumerated().filter { $0.offset % columns == column }.map(\.element)
     }
 }
 
