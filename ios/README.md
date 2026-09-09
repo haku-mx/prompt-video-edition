@@ -69,19 +69,26 @@ El enriquecimiento (música, lugar, nota, voz, enlaces) aplica **a nivel colecci
 y a nivel video**.
 
 ## Pestañas, Buscar, Notas y Calendario
-- **Pestañas** en la botonera flotante: **Biblioteca** (explorador de colecciones)
-  y **Calendario**. **Buscar** es el botón flotante independiente (abajo der.).
+- **Pestañas**: **Biblioteca** (explorador de colecciones) y **Calendario**.
+  Se cambian con la botonera flotante **o con swipe horizontal** (`TabView`
+  paginado). **Buscar** es el botón flotante independiente (abajo der.).
+- **Reproducir video**: tocar un video abre `VideoDetailSheet` con **AVPlayer**
+  para los videos reales del backend (`/api/media/{id}/salida.mp4`) o un
+  placeholder de vista previa para los clips de ejemplo; debajo, enriquecimiento
+  (música/lugar/voz/enlace) + nota.
 - **Buscar** (`SearchSheet`): campo por título/etiqueta, filtros (con ×), etiquetas
-  sugeridas y **resultados seleccionables** → "Crear colección (N)" abre
-  `NewCollectionSheet` (nombre + videos + enriquecer). Mock.
+  sugeridas y **resultados seleccionables** → "Crear colección (N)".
 - **Crear colección** (`NewCollectionSheet`): desde Buscar (con selección) o desde
-  el "+" (vacía). Nombre, videos incluidos y enriquecimiento. Mock.
-- **Notas / enriquecimiento** (`NoteSheet`): en un **video** (tocar su tile) y en
-  una **colección-recuerdo** (tarjeta "Nota del recuerdo"). Miniatura + fila de
-  enriquecer (música/lugar/voz/enlace) + texto + campo tipo "preguntar". Mock.
-- **Calendario** (`CalendarView`): rejilla mensual; los días con video muestran
-  miniatura + check/conteo; navegación mes a mes.
-- **Subir** (`UploadSheet`): Desde Fotos / Desde Archivos. Solo UX.
+  el "+" (vacía). Se guarda en `LibraryStore` (memoria de sesión) y **aparece** en
+  la lista de colecciones.
+- **Notas** de colección-recuerdo (`NoteSheet`): tarjeta "Nota del recuerdo".
+- **Calendario** (`CalendarView`): rejilla mensual con los videos por fecha;
+  tocar un día abre el detalle del video.
+- **Zoom** Año/Mes/Día: **pinch** (el swipe horizontal quedó para cambiar de
+  pestaña). **Subir** (`UploadSheet`): Desde Fotos / Archivos, solo UX.
+
+> Persistencia real (SwiftData), subida real y captura de enriquecimiento siguen
+> pendientes; `LibraryStore` es memoria de sesión (no sobrevive a reinicios).
 
 ## Biblioteca unificada (una sola ventana)
 

@@ -18,6 +18,9 @@ struct Video: Identifiable, Decodable, Hashable {
     let durationSeconds: Double?
     let modifiedAt: Double?
     let shotCount: Int?
+    /// Etiquetas para filtrar/arrangear (mock por ahora; no viene del backend,
+    /// por eso no está en `CodingKeys` y usa un valor por defecto).
+    var tags: [String] = []
 
     /// `Identifiable` usa el id estable del backend.
     var id: String { videoID }

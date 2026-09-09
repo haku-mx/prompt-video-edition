@@ -17,22 +17,25 @@ struct GallerySection: Identifiable, Hashable {
 
 /// Modos de organización temporal, como los recuerdos de Instagram/Fotos.
 enum GalleryViewMode: String, CaseIterable, Identifiable {
-    case years, months, days
+    // Orden de menor a mayor detalle; el pinch avanza en este orden
+    // (como Fotos: Años → Meses → Días → Todas).
+    case years, months, days, all
     var id: String { rawValue }
     var label: String {
         switch self {
         case .years:  return "Años"
         case .months: return "Meses"
         case .days:   return "Días"
+        case .all:    return "Todas"
         }
     }
-    /// Columnas y aspecto de tile por modo: más grande/cinemático en Años,
-    /// más denso en Días.
+    /// Columnas por modo: más grande/cinemático en Años, denso en Todas.
     var columns: Int {
         switch self {
         case .years:  return 1
         case .months: return 2
         case .days:   return 3
+        case .all:    return 5
         }
     }
     var tileAspect: CGFloat {
@@ -41,6 +44,8 @@ enum GalleryViewMode: String, CaseIterable, Identifiable {
         default:      return 1
         }
     }
+    /// `Todas` es un grid denso sin encabezados de fecha.
+    var isDense: Bool { self == .all }
 }
 
 @MainActor
@@ -100,7 +105,7 @@ enum GalleryGrouping {
             switch mode {
             case .years:  return cal.dateComponents([.year], from: d)
             case .months: return cal.dateComponents([.year, .month], from: d)
-            case .days:   return cal.dateComponents([.year, .month, .day], from: d)
+            case .days, .all: return cal.dateComponents([.year, .month, .day], from: d)
             }
         }
 
@@ -129,7 +134,7 @@ enum GalleryGrouping {
         case .months:
             guard let date = cal.date(from: comp) else { return "" }
             return monthFormatter.string(from: date).capitalizedFirst
-        case .days:
+        case .days, .all:
             guard let date = cal.date(from: comp) else { return "" }
             return dayFormatter.string(from: date).capitalizedFirst
         }

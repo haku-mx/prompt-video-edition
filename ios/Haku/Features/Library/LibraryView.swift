@@ -1,47 +1,58 @@
 //
 //  LibraryView.swift
-//  Pantalla inicial (iOS-M1): la Biblioteca de Haku.
-//
-//  Ventana única de carpetas (`FolderScreen`) + una pestaña de Calendario, con
-//  chrome flotante Liquid Glass abajo (botonera Biblioteca/Calendario + Buscar)
-//  que persiste sobre la navegación. Tema blanco (haku).
+//  Raíz de la app. Dos secciones (Biblioteca y Create) más los subapartados de
+//  Biblioteca (Colecciones / Videos), todo controlado desde la botonera de
+//  Liquid Glass — que se expande al activar Biblioteca. La pantalla queda libre
+//  para el contenido. Las colecciones creadas persisten en sesión (LibraryStore).
 //
 
 import SwiftUI
 
 struct LibraryView: View {
     @State private var tab: AppTab = .library
+    @State private var librarySegment: LibrarySegment = .collections
     @State private var searchPresented = false
+    @StateObject private var store = LibraryStore()
 
     var body: some View {
         ZStack {
             HakuColor.background.ignoresSafeArea()
 
-            Group {
-                switch tab {
-                case .library:
-                    NavigationStack {
-                        FolderScreen(
-                            title: "Biblioteca",
-                            folders: MockLibrary.rootFolders,
-                            staticMedia: nil
-                        )
-                    }
-                case .calendar:
-                    NavigationStack { CalendarView() }
-                }
+            TabView(selection: $tab) {
+                LibraryScreen(
+                    segment: librarySegment,
+                    collections: store.collections,
+                    onCreateCollection: create,
+                    onAddToCollection: { folder, videos in store.addVideos(to: folder, videos: videos) }
+                )
+                .tag(AppTab.library)
+
+                NavigationStack { CraftView() }
+                    .tag(AppTab.create)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             .tint(HakuColor.textPrimary)
 
-            // Chrome inferior flotante, persistente sobre la navegación.
             VStack {
                 Spacer()
-                FloatingBottomBar(tab: $tab) { searchPresented = true }
-                    .padding(.bottom, HakuSpacing.sm)
+                FloatingBottomBar(tab: $tab, librarySegment: $librarySegment) {
+                    searchPresented = true
+                }
+                .padding(.bottom, HakuSpacing.sm)
             }
         }
         .preferredColorScheme(.light)
-        .sheet(isPresented: $searchPresented) { SearchSheet() }
+        .sheet(isPresented: $searchPresented) {
+            SearchSheet(onCreateCollection: create)
+        }
+    }
+
+    private func create(_ name: String, _ videos: [Video], _ labels: Set<String>) {
+        store.addCollection(name: name, videos: videos, enrichmentLabels: labels)
+        withAnimation(.snappy(duration: 0.3)) {
+            tab = .library
+            librarySegment = .collections
+        }
     }
 }
 

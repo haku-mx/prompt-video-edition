@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct SearchSheet: View {
+    var onCreateCollection: (String, [Video], Set<String>) -> Void = { _, _, _ in }
+
     @Environment(\.dismiss) private var dismiss
     @State private var query: String = ""
     @State private var activeTags: [String] = ["grupo", "color"]
@@ -48,7 +50,10 @@ struct SearchSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $createPresented) {
-            NewCollectionSheet(selection: selectedVideos)
+            NewCollectionSheet(selection: selectedVideos) { name, videos, labels in
+                onCreateCollection(name, videos, labels)
+                dismiss()
+            }
         }
     }
 

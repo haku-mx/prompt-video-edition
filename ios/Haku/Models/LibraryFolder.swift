@@ -41,7 +41,7 @@ struct LibraryFolder: Identifiable, Hashable {
 
     /// Texto de la nota del recuerdo, si lo tiene (enriquecimiento `.text`).
     var noteText: String? {
-        for e in enrichments { if case .text(let t) = e { return t } }
+        for e in enrichments { if case .text(let t) = e { return t.isEmpty ? nil : t } }
         return nil
     }
 
@@ -74,13 +74,14 @@ struct LibraryFolder: Identifiable, Hashable {
 enum MockLibrary {
     /// Construye un Video mock con una fecha concreta (para poblar el zoom).
     private static func video(_ seed: String, _ name: String,
-                              _ y: Int, _ mo: Int, _ d: Int, _ dur: Double) -> Video {
+                              _ y: Int, _ mo: Int, _ d: Int, _ dur: Double,
+                              _ tags: [String] = []) -> Video {
         var c = DateComponents()
         c.year = y; c.month = mo; c.day = d; c.hour = 12
         let date = Calendar.current.date(from: c) ?? Date()
         return Video(videoID: seed, filename: name, indexed: true,
                      durationSeconds: dur, modifiedAt: date.timeIntervalSince1970,
-                     shotCount: nil)
+                     shotCount: nil, tags: tags)
     }
 
     /// Carpetas de nivel raíz que se muestran junto a la media real del backend.
@@ -93,19 +94,19 @@ enum MockLibrary {
                     name: "Costa 2025",
                     enrichments: [.place(name: "Sayulita"), .text("Los mejores días.")],
                     media: [
-                        video("costa-1", "amanecer.mp4", 2025, 7, 3, 24),
-                        video("costa-2", "surf.mp4", 2025, 7, 3, 58),
-                        video("costa-3", "atardecer.mp4", 2025, 7, 5, 41),
-                        video("costa-4", "malecon.mp4", 2025, 8, 12, 33),
+                        video("costa-1", "amanecer.mp4", 2025, 7, 3, 24, ["playa", "amanecer", "viaje"]),
+                        video("costa-2", "surf.mp4", 2025, 7, 3, 58, ["playa", "deporte", "verano"]),
+                        video("costa-3", "atardecer.mp4", 2025, 7, 5, 41, ["playa", "atardecer", "paisaje"]),
+                        video("costa-4", "malecon.mp4", 2025, 8, 12, 33, ["playa", "noche", "ciudad"]),
                     ]
                 ),
                 LibraryFolder(
                     name: "Roadtrip norte",
                     enrichments: [.place(name: "Real de Catorce"), .music(title: "Motion", artist: "Tycho")],
                     media: [
-                        video("road-1", "carretera.mp4", 2025, 1, 9, 72),
-                        video("road-2", "desierto.mp4", 2025, 1, 10, 65),
-                        video("road-3", "pueblo.mp4", 2025, 1, 11, 44),
+                        video("road-1", "carretera.mp4", 2025, 1, 9, 72, ["viaje", "carretera", "paisaje"]),
+                        video("road-2", "desierto.mp4", 2025, 1, 10, 65, ["viaje", "desierto", "noche"]),
+                        video("road-3", "pueblo.mp4", 2025, 1, 11, 44, ["viaje", "ciudad"]),
                     ]
                 ),
             ]
@@ -114,26 +115,26 @@ enum MockLibrary {
             name: "Familia",
             enrichments: [.voice(label: "Sus risas"), .text("No lo puedo creer.")],
             media: [
-                video("bebe-1", "primeros_pasos.mp4", 2025, 3, 18, 51),
-                video("bebe-2", "cumple.mp4", 2024, 11, 2, 88),
-                video("fam-3", "cena.mp4", 2024, 12, 24, 120),
+                video("bebe-1", "primeros_pasos.mp4", 2025, 3, 18, 51, ["familia", "bebé", "interior"]),
+                video("bebe-2", "cumple.mp4", 2024, 11, 2, 88, ["familia", "fiesta", "interior"]),
+                video("fam-3", "cena.mp4", 2024, 12, 24, 120, ["familia", "noche", "interior"]),
             ]
         ),
         LibraryFolder(
             name: "Skate sessions",
             enrichments: [.social(source: "TikTok"), .music(title: "MEGA", artist: "Blank Banshee")],
             media: [
-                video("skate-1", "line_1.mp4", 2026, 5, 2, 19),
-                video("skate-2", "line_2.mp4", 2026, 5, 2, 22),
-                video("skate-3", "slam.mp4", 2026, 6, 14, 12),
-                video("skate-4", "session.mp4", 2026, 6, 14, 34),
+                video("skate-1", "line_1.mp4", 2026, 5, 2, 19, ["skate", "deporte", "calle"]),
+                video("skate-2", "line_2.mp4", 2026, 5, 2, 22, ["skate", "deporte", "calle"]),
+                video("skate-3", "slam.mp4", 2026, 6, 14, 12, ["skate", "deporte"]),
+                video("skate-4", "session.mp4", 2026, 6, 14, 34, ["skate", "calle", "amigos"]),
             ]
         ),
         LibraryFolder(
             name: "Sin clasificar",
             media: [
-                video("misc-1", "clip_a.mp4", 2026, 2, 1, 15),
-                video("misc-2", "clip_b.mp4", 2026, 2, 1, 27),
+                video("misc-1", "clip_a.mp4", 2026, 2, 1, 15, ["varios"]),
+                video("misc-2", "clip_b.mp4", 2026, 2, 1, 27, ["varios", "noche"]),
             ]
         ),
     ]
