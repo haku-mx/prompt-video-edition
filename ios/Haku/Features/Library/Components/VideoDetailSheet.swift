@@ -23,6 +23,7 @@ struct VideoDetailSheet: View {
     @State private var player: AVPlayer?
     @State private var note: String = ""
     @State private var chosen: Set<String> = []
+    @State private var stageWidth: CGFloat = 390
 
     private let enrichOptions: [(icon: String, label: String)] = [
         ("music.note", "Música"),
@@ -35,11 +36,14 @@ struct VideoDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HakuSpacing.lg) {
-                    playerArea
-                    enrichRow
-                    noteEditor
+                    playerArea // borde a borde
+                    VStack(alignment: .leading, spacing: HakuSpacing.lg) {
+                        enrichRow
+                        noteEditor
+                    }
+                    .padding(.horizontal, HakuSpacing.lg)
                 }
-                .padding(HakuSpacing.lg)
+                .padding(.bottom, HakuSpacing.lg)
             }
             .background(HakuColor.background)
             .scrollContentBackground(.hidden)
@@ -54,30 +58,51 @@ struct VideoDetailSheet: View {
         .onDisappear { player?.pause() }
     }
 
-    @ViewBuilder
+    private var ratio: CGFloat { TimelineBuilder.aspect(for: payload.video.videoID) }
+    private var stageHeight: CGFloat {
+        min(max(stageWidth / ratio, 190), 360)
+    }
+
+    /// Reproductor a borde completo que adapta su alto al formato del video.
     private var playerArea: some View {
-        if let player {
-            VideoPlayer(player: player)
-                .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous).stroke(HakuColor.hairline, lineWidth: 1))
-        } else {
-            PlaceholderThumbnail(seed: payload.video.videoID)
-                .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                .overlay {
-                    VStack(spacing: HakuSpacing.sm) {
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 44))
-                            .foregroundStyle(.white.opacity(0.9))
-                        Text("Vista previa · clip de ejemplo")
-                            .font(HakuFont.caption)
-                            .foregroundStyle(.white.opacity(0.9))
+        ZStack {
+            Color.black
+            if let player {
+                VideoPlayer(player: player).aspectRatio(ratio, contentMode: .fit)
+            } else {
+                PlaceholderThumbnail(seed: payload.video.videoID)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay {
+                        VStack(spacing: HakuSpacing.sm) {
+                            Image(systemName: "play.circle.fill").font(.system(size: 44)).foregroundStyle(.white.opacity(0.9))
+                            Text("Vista previa · clip de ejemplo").font(HakuFont.caption).foregroundStyle(.white.opacity(0.9))
+                        }
+                        .shadow(radius: 4)
                     }
-                    .shadow(radius: 4)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: HakuRadius.lg, style: .continuous).stroke(HakuColor.hairline, lineWidth: 1))
+            }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: stageHeight)
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.width
+        } action: { width in
+            stageWidth = width
+        }
+        .clipped()
+        .overlay(alignment: .topTrailing) {
+            Text(formatLabel(ratio)).font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(.black.opacity(0.4), in: Capsule())
+                .padding(HakuSpacing.md)
+        }
+    }
+
+    private func formatLabel(_ r: CGFloat) -> String {
+        if abs(r - 16.0/9.0) < 0.05 { return "16:9" }
+        if abs(r - 9.0/16.0) < 0.05 { return "9:16" }
+        if abs(r - 1.0) < 0.05 { return "1:1" }
+        if abs(r - 4.0/5.0) < 0.05 { return "4:5" }
+        return String(format: "%.2f", r)
     }
 
     private var enrichRow: some View {
