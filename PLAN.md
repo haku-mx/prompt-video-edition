@@ -71,6 +71,7 @@ servidor FastAPI (M2). La app nunca corre visión ni toca video — solo habla c
 | `GET /api/videos` | Biblioteca: listar videos locales + estado `indexed` |
 | `POST /api/index` | Indexar un video (dispara el batch en el servidor) |
 | `GET /api/index/{video_id}` | Detalle: ver shots (timecodes, transcript) |
+| `POST /api/timeline/command` | Prompt → decisión validada para previsualizar ediciones sin render |
 | `POST /api/cut` | Prompt → decisión → timeline → MP4 |
 | `GET /api/media/{video_id}/salida.mp4` | Reproducir el corte (AVPlayer) |
 

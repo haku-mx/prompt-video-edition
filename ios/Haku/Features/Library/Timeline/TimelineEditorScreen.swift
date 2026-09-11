@@ -24,6 +24,12 @@ struct TimelineEditorScreen: View {
     @State private var mutedTracks: Set<String> = []
     @State private var activeTool: String?
     @State private var detailVideo: VideoDetailPayload?
+    @State private var aiComposerPresented = false
+    @State private var aiPrompt = ""
+    @State private var aiResponse: String?
+    @State private var aiError: String?
+    @State private var aiIsWorking = false
+    @FocusState private var aiPromptFocused: Bool
     // Escala del timeline: puntos por segundo (ajustable con pinch).
     @State private var scale: CGFloat = 9
     @State private var scaleAtPinchStart: CGFloat?
@@ -93,7 +99,13 @@ struct TimelineEditorScreen: View {
             preview
             timelineArea
             if let clip = selectedClip { inspector(clip) }
-            toolbar
+            if aiComposerPresented {
+                aiComposer
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                editorToolbar
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .background(HakuColor.background)
         .navigationTitle(folder.name)
@@ -418,29 +430,240 @@ struct TimelineEditorScreen: View {
         ("textformat", "Texto"),
     ]
 
-    private var toolbar: some View {
-        HStack(spacing: 0) {
-            ForEach(tools, id: \.label) { tool in
-                Button {
-                    activeTool = tool.label
-                    Haptics.light()
-                } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: tool.icon).font(.system(size: 18, weight: .regular))
-                        Text(tool.label).font(.system(size: 10, weight: .medium))
-                    }
-                    .foregroundStyle(activeTool == tool.label ? HakuColor.accent : HakuColor.textSecondary)
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
-                .disabled(selectedClipID == nil)
-                .opacity(selectedClipID == nil ? 0.4 : 1)
+    private var editorToolbar: some View {
+        VStack(spacing: 3) {
+            Button { presentAIComposer() } label: {
+                Capsule()
+                    .fill(HakuColor.textTertiary.opacity(0.45))
+                    .frame(width: 28, height: 3)
+                    .frame(width: 88, height: 12)
             }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+            .accessibilityLabel("Open AI editor")
+
+            HStack(spacing: 0) {
+                ForEach(tools, id: \.label) { tool in
+                    Button {
+                        activeTool = tool.label
+                        Haptics.light()
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: tool.icon).font(.system(size: 18, weight: .regular))
+                            Text(tool.label).font(.system(size: 10, weight: .medium))
+                        }
+                        .foregroundStyle(activeTool == tool.label ? HakuColor.accent : HakuColor.textSecondary)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(selectedClipID == nil)
+                    .opacity(selectedClipID == nil ? 0.4 : 1)
+                }
+            }
+            .padding(.top, 3)
+            .padding(.bottom, 6)
         }
-        .padding(.top, 10)
-        .padding(.bottom, 6)
         .background(HakuColor.surface)
         .overlay(alignment: .top) { Rectangle().fill(HakuColor.hairline).frame(height: 1) }
+        .contentShape(Rectangle())
+        .simultaneousGesture(aiRevealGesture)
+        .accessibilityAction(named: Text("Open AI editor")) { presentAIComposer() }
+    }
+
+    private var aiRevealGesture: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onEnded { value in
+                let rise = -value.translation.height
+                guard rise > 54, rise > abs(value.translation.width) else { return }
+                presentAIComposer()
+            }
+    }
+
+    private var aiComposer: some View {
+        VStack(alignment: .leading, spacing: HakuSpacing.sm) {
+            HStack {
+                Label("Edit with Haku", systemImage: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(HakuColor.textSecondary)
+                Spacer()
+                Button { dismissAIComposer() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(HakuColor.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(HakuColor.surfaceMuted, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close AI editor")
+            }
+
+            if let message = aiResponse {
+                aiMessage(message, icon: "checkmark.circle.fill", color: HakuColor.ready)
+            } else if let message = aiError {
+                aiMessage(message, icon: "exclamationmark.circle.fill", color: HakuColor.accent)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 7) {
+                        aiSuggestion("Keep the best moments")
+                        aiSuggestion("Make it shorter")
+                        aiSuggestion("Focus on movement")
+                    }
+                }
+            }
+
+            HStack(spacing: HakuSpacing.sm) {
+                Image(systemName: "sparkle.magnifyingglass")
+                    .foregroundStyle(HakuColor.textTertiary)
+                TextField("Describe the edit…", text: $aiPrompt, axis: .vertical)
+                    .font(HakuFont.body)
+                    .lineLimit(1...3)
+                    .focused($aiPromptFocused)
+                    .submitLabel(.send)
+                    .onSubmit { submitAICommand() }
+                    .disabled(aiIsWorking)
+
+                Button { submitAICommand() } label: {
+                    Group {
+                        if aiIsWorking {
+                            ProgressView().controlSize(.small).tint(.white)
+                        } else {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(canSubmitAICommand ? HakuColor.accent : HakuColor.textTertiary, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSubmitAICommand)
+                .accessibilityLabel("Apply edit")
+            }
+            .padding(.leading, 12)
+            .padding(.trailing, 5)
+            .padding(.vertical, 5)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(HakuColor.hairline, lineWidth: 1)
+            }
+        }
+        .padding(.horizontal, HakuSpacing.md)
+        .padding(.top, HakuSpacing.sm)
+        .padding(.bottom, 8)
+        .background(HakuColor.surface.opacity(0.96))
+        .overlay(alignment: .top) { Rectangle().fill(HakuColor.hairline).frame(height: 1) }
+    }
+
+    private func aiMessage(_ message: String, icon: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            Image(systemName: icon).foregroundStyle(color)
+            Text(message)
+                .font(HakuFont.caption)
+                .foregroundStyle(HakuColor.textSecondary)
+                .lineLimit(2)
+        }
+    }
+
+    private func aiSuggestion(_ text: String) -> some View {
+        Button {
+            aiPrompt = text
+            aiPromptFocused = true
+        } label: {
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(HakuColor.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(HakuColor.surfaceMuted, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var canSubmitAICommand: Bool {
+        !aiIsWorking && !aiPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func presentAIComposer() {
+        Haptics.rigid()
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+            aiComposerPresented = true
+        }
+        Task {
+            try? await Task.sleep(for: .milliseconds(220))
+            aiPromptFocused = true
+        }
+    }
+
+    private func dismissAIComposer() {
+        aiPromptFocused = false
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.92)) {
+            aiComposerPresented = false
+        }
+    }
+
+    private func submitAICommand() {
+        let prompt = aiPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty, !aiIsWorking else { return }
+        aiPromptFocused = false
+        aiResponse = nil
+        aiError = nil
+        aiIsWorking = true
+
+        let videoIDs = Array(Set(
+            videoTracks.flatMap(\.clips).filter(\.included).map { $0.video.videoID }
+        )).sorted()
+
+        Task {
+            do {
+                let response = try await HakuAPI.localhost.applyTimelineCommand(prompt, videoIDs: videoIDs)
+                await MainActor.run {
+                    apply(response)
+                    aiResponse = responseMessage(response)
+                    aiPrompt = ""
+                    aiIsWorking = false
+                    Haptics.rigid()
+                }
+            } catch {
+                await MainActor.run {
+                    aiError = error.localizedDescription
+                    aiIsWorking = false
+                    Haptics.light()
+                }
+            }
+        }
+    }
+
+    private func apply(_ response: TimelineCommandResponse) {
+        let decisions = Dictionary(uniqueKeysWithValues: response.results.map { ($0.videoID, $0) })
+        withAnimation(.snappy(duration: 0.35)) {
+            for trackIndex in tracks.indices where tracks[trackIndex].kind == .video {
+                for clipIndex in tracks[trackIndex].clips.indices {
+                    var clip = tracks[trackIndex].clips[clipIndex]
+                    guard let decision = decisions[clip.video.videoID] else { continue }
+                    let duration = TimelineBuilder.duration(of: clip.video)
+                    for frameIndex in clip.frames.indices {
+                        let position = (Double(frameIndex) + 0.5) / Double(max(clip.frames.count, 1)) * duration
+                        clip.frames[frameIndex].included = decision.clips.contains {
+                            position >= $0.startSeconds && position <= $0.endSeconds
+                        }
+                    }
+                    clip.included = clip.frames.contains(where: \.included)
+                    tracks[trackIndex].clips[clipIndex] = clip
+                }
+            }
+        }
+    }
+
+    private func responseMessage(_ response: TimelineCommandResponse) -> String {
+        if response.results.isEmpty {
+            return "Index these videos first so Haku can understand and edit them."
+        }
+        let edited = response.results.count
+        let skipped = response.unavailableVideoIDs.count
+        let prefix = "Updated \(edited) \(edited == 1 ? "video" : "videos")"
+            + (skipped > 0 ? "; \(skipped) not indexed." : ".")
+        return response.summary.isEmpty ? prefix : "\(prefix) \(response.summary)"
     }
 
     private var versionsMenu: some View {

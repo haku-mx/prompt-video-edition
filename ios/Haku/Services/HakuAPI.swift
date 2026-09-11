@@ -31,6 +31,40 @@ enum HakuAPIError: LocalizedError {
     }
 }
 
+struct TimelineCommandResponse: Decodable {
+    let results: [TimelineVideoDecision]
+    let unavailableVideoIDs: [String]
+    let summary: String
+
+    enum CodingKeys: String, CodingKey {
+        case results
+        case unavailableVideoIDs = "unavailable_video_ids"
+        case summary
+    }
+}
+
+struct TimelineVideoDecision: Decodable {
+    let videoID: String
+    let clips: [TimelineClipDecision]
+    let rationale: String
+
+    enum CodingKeys: String, CodingKey {
+        case videoID = "video_id"
+        case clips
+        case rationale
+    }
+}
+
+struct TimelineClipDecision: Decodable {
+    let startSeconds: Double
+    let endSeconds: Double
+
+    enum CodingKeys: String, CodingKey {
+        case startSeconds = "in_s"
+        case endSeconds = "out_s"
+    }
+}
+
 /// Cliente ligero de la API de Haku. Async/await; sin dependencias externas.
 struct HakuAPI {
     /// URL base del backend. Ajustable para desarrollo local o remoto.
@@ -65,5 +99,47 @@ struct HakuAPI {
         } catch {
             throw HakuAPIError.decoding(error.localizedDescription)
         }
+    }
+
+
+    /// `POST /api/timeline/command` — asks the AI engine for a reversible edit
+    /// decision without rendering a new video.
+    func applyTimelineCommand(_ prompt: String, videoIDs: [String]) async throws -> TimelineCommandResponse {
+        let url = baseURL.appendingPathComponent("api/timeline/command")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(
+            TimelineCommandPayload(videoIDs: videoIDs, prompt: prompt)
+        )
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw HakuAPIError.notConnected(error.localizedDescription)
+        }
+
+        if let http = response as? HTTPURLResponse,
+           !(200...299).contains(http.statusCode) {
+            throw HakuAPIError.badStatus(http.statusCode)
+        }
+
+        do {
+            return try JSONDecoder().decode(TimelineCommandResponse.self, from: data)
+        } catch {
+            throw HakuAPIError.decoding(error.localizedDescription)
+        }
+    }
+}
+
+private struct TimelineCommandPayload: Encodable {
+    let videoIDs: [String]
+    let prompt: String
+
+    enum CodingKeys: String, CodingKey {
+        case videoIDs = "video_ids"
+        case prompt
     }
 }

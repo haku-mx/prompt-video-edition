@@ -48,6 +48,11 @@ class CutRequest(BaseModel):
     prompt: str
 
 
+class TimelineCommandRequest(BaseModel):
+    video_ids: list[str]
+    prompt: str
+
+
 # ------------------------------------------------------------------- rutas
 @app.get("/", response_class=HTMLResponse)
 def home() -> str:
@@ -147,6 +152,62 @@ def api_cut(req: CutRequest) -> dict:
         "backend": decision.get("backend"),
         "mp4_url": f"/api/media/{req.video_id}/salida.mp4",
         "otio_url": f"/api/media/{req.video_id}/cut.otio",
+    }
+
+
+@app.post("/api/timeline/command")
+def api_timeline_command(req: TimelineCommandRequest) -> dict:
+    """Apply a natural-language edit to one or more indexed videos.
+
+    This uses the same validated decision engine as ``/api/cut`` but deliberately
+    skips OTIO generation and rendering. The iOS timeline can therefore preview
+    and refine the selection immediately before committing an export.
+    """
+    prompt = req.prompt.strip()
+    if not prompt:
+        raise HTTPException(422, "Escribe una instrucción para editar el timeline.")
+
+    video_ids = list(dict.fromkeys(req.video_ids))
+    if not video_ids:
+        raise HTTPException(422, "El timeline no contiene videos.")
+
+    results = []
+    unavailable = []
+    for video_id in video_ids:
+        index = indexer.load_index(video_id)
+        if index is None:
+            unavailable.append(video_id)
+            continue
+
+        try:
+            decision = decide_mod.decide(index, prompt)
+        except decide_mod.BackendError as e:
+            raise HTTPException(502, str(e))
+
+        fps = float(index.get("video", {}).get("fps") or 1)
+        clips = [
+            {
+                **clip,
+                "in_s": clip["in_frame"] / fps,
+                "out_s": clip["out_frame"] / fps,
+            }
+            for clip in decision["clips"]
+        ]
+        results.append(
+            {
+                "video_id": video_id,
+                "clips": clips,
+                "rationale": decision["rationale"],
+                "invalid": decision["invalid"],
+                "backend": decision.get("backend"),
+            }
+        )
+
+    rationales = [result["rationale"] for result in results if result["rationale"]]
+    return {
+        "results": results,
+        "unavailable_video_ids": unavailable,
+        "summary": " ".join(rationales),
     }
 
 
