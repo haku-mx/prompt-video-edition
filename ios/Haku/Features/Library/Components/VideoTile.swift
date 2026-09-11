@@ -9,8 +9,6 @@ struct VideoTile: View {
     let video: Video
     /// Relación de aspecto ancho:alto de la portada (1 = cuadrada).
     var aspect: CGFloat = 1
-    /// Muestra el nombre del archivo debajo de la portada.
-    var showsFilename: Bool = true
     /// Modo "las imágenes hablan": solo miniatura + duración (sin play/estado).
     var minimalOverlays: Bool = false
     /// Aplica el feedback de presión propio (desactívalo si el contenedor ya
@@ -67,16 +65,17 @@ struct VideoTile: View {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(HakuColor.hairline, lineWidth: 1)
                 )
-
-            if showsFilename {
-                Text(video.filename)
-                    .font(HakuFont.body)
-                    .foregroundStyle(HakuColor.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
         }
         .modifier(OptionalPressable(enabled: pressable))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Video")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        [video.durationLabel, video.indexed ? "indexado" : "sin indexar"]
+            .compactMap { $0 }
+            .joined(separator: ", ")
     }
 }
 

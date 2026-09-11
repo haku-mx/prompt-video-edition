@@ -198,7 +198,7 @@ struct MediaTimeframeView<Header: View>: View {
             else { detailVideo = VideoDetailPayload(video: video, playbackURL: playbackURL(video)) }
         } label: {
             VideoTile(video: video, aspect: zoom.tileAspect,
-                      showsFilename: false, minimalOverlays: true, pressable: false)
+                      minimalOverlays: true, pressable: false)
                 .overlay {
                     if selecting && isSel {
                         RoundedRectangle(cornerRadius: HakuRadius.sm, style: .continuous)

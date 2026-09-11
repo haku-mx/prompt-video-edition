@@ -42,7 +42,7 @@ struct TimelineEditorScreen: View {
 
     init(video: Video, onClose: @escaping () -> Void) {
         self.init(
-            folder: LibraryFolder(name: video.filename, media: [video]),
+            folder: LibraryFolder(name: "Timeline", media: [video]),
             onClose: onClose
         )
     }
@@ -156,8 +156,7 @@ struct TimelineEditorScreen: View {
         if let clip = previewClip {
             HStack(spacing: 6) {
                 Circle().fill(clip.color).frame(width: 8, height: 8)
-                Text(clip.video.filename).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
-                Text("· \(timecode(playheadTime))").font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
+                Text(timecode(playheadTime)).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(.black.opacity(0.4), in: Capsule())
@@ -373,8 +372,6 @@ struct TimelineEditorScreen: View {
         VStack(alignment: .leading, spacing: HakuSpacing.sm) {
             HStack(spacing: 8) {
                 Circle().fill(clip.color).frame(width: 10, height: 10)
-                Text(clip.video.filename).font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(HakuColor.textPrimary).lineLimit(1)
                 Spacer()
                 Button { toggleClip(clip.id) } label: {
                     Image(systemName: clip.included ? "checkmark.circle.fill" : "circle")

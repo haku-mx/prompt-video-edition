@@ -48,8 +48,6 @@ struct VideoDetailSheet: View {
             }
             .background(HakuColor.background)
             .scrollContentBackground(.hidden)
-            .navigationTitle(payload.video.filename)
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cerrar") { dismiss() } }
             }
