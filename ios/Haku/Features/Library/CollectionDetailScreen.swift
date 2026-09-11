@@ -11,18 +11,32 @@ struct CollectionDetailScreen: View {
     var onCreateCollection: (String, [Video], Set<String>) -> Void = { _, _, _ in }
 
     @State private var note: NotePayload?
+    @State private var showEditor = false
 
     var body: some View {
-        MediaTimeframeView(media: folder.media, playbackURL: { _ in nil },
-                           onCreateCollection: onCreateCollection) {
-            VStack(alignment: .leading, spacing: HakuSpacing.lg) {
-                if let text = folder.noteText { noteCard(text) }
-                if !folder.subfolders.isEmpty { subcollections }
+        ZStack(alignment: .bottom) {
+            MediaTimeframeView(media: folder.media, playbackURL: { _ in nil },
+                               onCreateCollection: onCreateCollection, header: {
+                VStack(alignment: .leading, spacing: HakuSpacing.lg) {
+                    if let text = folder.noteText { noteCard(text) }
+                    if !folder.subfolders.isEmpty { subcollections }
+                }
+            })
+
+            SwipeToTimelineOverlay(bottomPadding: HakuLayout.bottomInset) {
+                showEditor = true
             }
         }
         .navigationTitle(folder.name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $note) { NoteSheet(payload: $0) }
+        .fullScreenCover(isPresented: $showEditor) {
+            NavigationStack {
+                TimelineEditorScreen(folder: folder) {
+                    showEditor = false
+                }
+            }
+        }
     }
 
     private var subcollections: some View {

@@ -341,11 +341,14 @@ struct CraftView: View {
     }
 }
 
-/// Feedback háptico ligero para que seleccionar/explorar se sienta táctil.
+/// Feedback háptico para que las interacciones se sientan táctiles.
 enum Haptics {
     static func light() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    /// Golpe seco, para marcar cruces de umbral (p. ej. "armar" un gesto).
+    static func rigid() {
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
     }
 }
 
