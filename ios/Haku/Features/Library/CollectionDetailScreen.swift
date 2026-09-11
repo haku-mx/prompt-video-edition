@@ -12,34 +12,20 @@ struct CollectionDetailScreen: View {
 
     @State private var note: NotePayload?
     @State private var showEditor = false
-    @State private var showSwipeHint = true
-
-    // Gesto interactivo: swipe hacia arriba para abrir el editor.
-    @State private var pull: CGFloat = 0
-    @State private var armed = false
-    private let threshold: CGFloat = 96
-
-    private var pullProgress: CGFloat { min(1, max(0, pull / threshold)) }
-    private var pullOffset: CGFloat {
-        // Un poco de resistencia mantiene el gesto contenido y elegante.
-        min(pull * 0.48, 52)
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             MediaTimeframeView(media: folder.media, playbackURL: { _ in nil },
-                               onCreateCollection: onCreateCollection) {
+                               onCreateCollection: onCreateCollection, header: {
                 VStack(alignment: .leading, spacing: HakuSpacing.lg) {
                     if let text = folder.noteText { noteCard(text) }
                     if !folder.subfolders.isEmpty { subcollections }
                 }
+            })
+
+            SwipeToTimelineOverlay(bottomPadding: HakuLayout.bottomInset) {
+                showEditor = true
             }
-
-            Color.black.opacity(Double(pullProgress) * 0.055)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            pullTab
         }
         .navigationTitle(folder.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -51,64 +37,6 @@ struct CollectionDetailScreen: View {
                 }
             }
         }
-    }
-
-    // MARK: - Swipe up para editar
-
-    private var pullTab: some View {
-        VStack(spacing: 4) {
-            Image(systemName: "chevron.right")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(HakuColor.textPrimary)
-                .rotationEffect(.degrees(-90))
-                .offset(y: -pullProgress * 2)
-
-            Text("swipe up\nto edit")
-                .font(.system(size: 11, weight: .medium))
-                .tracking(0.2)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(HakuColor.textSecondary)
-        }
-        .frame(width: 100, height: 52, alignment: .top)
-        .opacity(showSwipeHint ? 0.58 + Double(pullProgress) * 0.2 : 0)
-        .blur(radius: showSwipeHint ? 0 : 3)
-        .contentShape(Rectangle())
-        .gesture(pullGesture)
-        .offset(y: -pullOffset)
-        .padding(.bottom, HakuLayout.bottomInset)
-        .animation(.easeOut(duration: 0.18), value: armed)
-        .task {
-            do {
-                try await Task.sleep(for: .seconds(2))
-                withAnimation(.easeOut(duration: 0.5)) {
-                    showSwipeHint = false
-                }
-            } catch { }
-        }
-    }
-
-    private var pullGesture: some Gesture {
-        DragGesture(minimumDistance: 6)
-            .onChanged { value in
-                pull = max(0, -value.translation.height)
-                let nowArmed = pull >= threshold
-                if nowArmed && !armed {
-                    Haptics.light()
-                }
-                armed = nowArmed
-            }
-            .onEnded { value in
-                let dy: CGFloat = value.translation.height
-                let predictedDy: CGFloat = value.predictedEndTranslation.height
-                let committed = (-dy) >= threshold || (-predictedDy) >= threshold * 1.15
-                if committed {
-                    showEditor = true
-                }
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.9)) {
-                    pull = 0
-                    armed = false
-                }
-            }
     }
 
     private var subcollections: some View {

@@ -24,6 +24,7 @@ struct VideoDetailSheet: View {
     @State private var note: String = ""
     @State private var chosen: Set<String> = []
     @State private var stageWidth: CGFloat = 390
+    @State private var showEditor = false
 
     private let enrichOptions: [(icon: String, label: String)] = [
         ("music.note", "Música"),
@@ -54,6 +55,18 @@ struct VideoDetailSheet: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .overlay {
+            SwipeToTimelineOverlay(bottomPadding: HakuSpacing.lg) {
+                showEditor = true
+            }
+        }
+        .fullScreenCover(isPresented: $showEditor) {
+            NavigationStack {
+                TimelineEditorScreen(video: payload.video) {
+                    showEditor = false
+                }
+            }
+        }
         .onAppear { if let url = payload.playbackURL { player = AVPlayer(url: url) } }
         .onDisappear { player?.pause() }
     }

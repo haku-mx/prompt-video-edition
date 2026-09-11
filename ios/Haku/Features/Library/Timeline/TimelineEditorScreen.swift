@@ -40,6 +40,13 @@ struct TimelineEditorScreen: View {
         _tracks = State(initialValue: TimelineBuilder.tracks(for: folder))
     }
 
+    init(video: Video, onClose: @escaping () -> Void) {
+        self.init(
+            folder: LibraryFolder(name: video.filename, media: [video]),
+            onClose: onClose
+        )
+    }
+
     // MARK: - Derivados
 
     private struct Laid: Identifiable { let id: String; let clip: VideoClip; let start: Double; let width: CGFloat }
